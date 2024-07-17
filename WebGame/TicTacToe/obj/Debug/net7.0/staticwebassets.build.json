@@ -1,0 +1,11 @@
+{
+  "Version": 1,
+  "Hash": "ko6y3FdCt3l+mZgawWyxjX9cPDfsmuDnbDFqOoh20Ow=",
+  "Source": "TicTacToe",
+  "BasePath": "_content/TicTacToe",
+  "Mode": "Default",
+  "ManifestType": "Build",
+  "ReferencedProjectsConfiguration": [],
+  "DiscoveryPatterns": [],
+  "Assets": []
+}
