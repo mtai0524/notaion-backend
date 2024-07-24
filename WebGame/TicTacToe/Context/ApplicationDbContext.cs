@@ -1,8 +1,8 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using TicTacToe.Models;
+using Notaion.Models;
 
-namespace TicTacToe.Context
+namespace Notaion.Context
 {
     public class ApplicationDbContext : DbContext
     {

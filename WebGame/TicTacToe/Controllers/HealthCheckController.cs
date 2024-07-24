@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
-namespace TicTacToe.Controllers
+namespace Notaion.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]

@@ -1,9 +1,9 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using TicTacToe.Context;
-using TicTacToe.Models;
+using Notaion.Context;
+using Notaion.Models;
 
-namespace TicTacToe.Controllers
+namespace Notaion.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]

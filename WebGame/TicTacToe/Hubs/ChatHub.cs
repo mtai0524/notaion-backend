@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.SignalR;
 
-namespace TicTacToe.Hubs
+namespace Notaion.Hubs
 {
     public class ChatHub : Hub
     {

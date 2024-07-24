@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace TicTacToe.Models
+namespace Notaion.Models
 {
     public class Item
     {

@@ -3,8 +3,8 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Identity.Web;
-using TicTacToe.Context;
-using TicTacToe.Hubs;
+using Notaion.Context;
+using Notaion.Hubs;
 
 var builder = WebApplication.CreateBuilder(args);
 

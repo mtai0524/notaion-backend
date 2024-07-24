@@ -3,9 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.8.34511.84
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TicTacToe", "TicTacToe\TicTacToe.csproj", "{05F12F0E-2CE7-4A2B-8A3B-4C9BD2DDB994}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Notaion", "TicTacToe\Notaion.csproj", "{05F12F0E-2CE7-4A2B-8A3B-4C9BD2DDB994}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Client", "Client\Client.csproj", "{A3D2B767-3564-49F3-A488-6B50A7127506}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Client", "Client\Client.csproj", "{A3D2B767-3564-49F3-A488-6B50A7127506}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

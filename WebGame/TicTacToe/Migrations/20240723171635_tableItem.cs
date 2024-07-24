@@ -2,7 +2,7 @@
 
 #nullable disable
 
-namespace TicTacToe.Migrations
+namespace Notaion.Migrations
 {
     /// <inheritdoc />
     public partial class tableItem : Migration

@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Identity.Web.Resource;
 
-namespace TicTacToe.Controllers
+namespace Notaion.Controllers
 {
     [Authorize]
     [ApiController]
