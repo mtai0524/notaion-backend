@@ -1,7 +1,12 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using CloudinaryDotNet.Actions;
+using CloudinaryDotNet;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using Notaion.Configurations;
 using Notaion.Context;
 using Notaion.Models;
+using Notaion.Services;
 
 namespace Notaion.Controllers
 {
@@ -10,17 +15,18 @@ namespace Notaion.Controllers
     public class ItemsController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
-
-        public ItemsController(ApplicationDbContext context)
+        private readonly ICloudinaryService _cloudinaryService;
+        public ItemsController(ApplicationDbContext context, ICloudinaryService cloudinaryService)
         {
             _context = context;
+            _cloudinaryService = cloudinaryService;
         }
 
         // GET: api/Items
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Item>>> GetItems()
         {
-            return await _context.Items.OrderBy(x=> x.Order).ToListAsync();
+            return await _context.Items.OrderBy(x => x.Order).ToListAsync();
         }
 
         // POST: api/Items
@@ -37,11 +43,11 @@ namespace Notaion.Controllers
         [HttpPost("bulk")]
         public async Task<IActionResult> PostItemsBulk(IEnumerable<Item> items)
         {
-            foreach(var i in items)
+            foreach (var i in items)
             {
-                var item = await _context.Items.Where(x=> x.Id == i.Id).FirstOrDefaultAsync();
+                var item = await _context.Items.Where(x => x.Id == i.Id).FirstOrDefaultAsync();
                 // if != null => item existing in db => update item
-                if(item != null)
+                if (item != null)
                 {
                     item.Content = i.Content;
                     item.Heading = i.Heading;
@@ -81,24 +87,37 @@ namespace Notaion.Controllers
         {
             try
             {
-                // Tìm tất cả các mục với ID đã cho
                 var items = await _context.Items.Where(x => x.Id == id).ToListAsync();
 
                 if (items.Any())
                 {
-                    // Xóa tất cả các mục
                     _context.Items.RemoveRange(items);
                     await _context.SaveChangesAsync();
                     return Ok(new { message = "Deleted" });
                 }
-
-                // Nếu không tìm thấy mục nào để xóa
                 return NotFound(new { message = "Not found." });
             }
             catch (Exception ex)
             {
                 return StatusCode(StatusCodes.Status500InternalServerError, new { message = "An error occurred while deleting the item.", error = ex.Message });
             }
+        }
+        [HttpPost("upload")]
+        public async Task<IActionResult> Upload(IFormFile file)
+        {
+            if (file == null || file.Length == 0)
+            {
+                return BadRequest("Upload a valid file.");
+            }
+
+            var imageUrl = await _cloudinaryService.UploadImageAsync(file);
+
+            if (imageUrl == null)
+            {
+                return StatusCode(500, "Failed to upload image.");
+            }
+
+            return Ok(new { Url = imageUrl });
         }
 
     }

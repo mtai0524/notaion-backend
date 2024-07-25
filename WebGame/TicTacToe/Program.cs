@@ -1,10 +1,13 @@
+using CloudinaryDotNet;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Identity.Web;
+using Notaion.Configurations;
 using Notaion.Context;
 using Notaion.Hubs;
+using Notaion.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -24,6 +27,19 @@ builder.Services.AddCors(options =>
                 .AllowAnyMethod()
                 .AllowCredentials());
 });
+
+//// Cấu hình tài khoản Cloudinary
+var configuration = builder.Configuration;
+
+var cloudName = configuration["Cloudinary:CloudName"];
+var apiKey = configuration["Cloudinary:ApiKey"];
+var apiSecret = configuration["Cloudinary:ApiSecret"];
+
+var cloudinaryAccount = new Account(cloudName, apiKey, apiSecret);
+var cloudinary = new Cloudinary(cloudinaryAccount);
+builder.Services.AddSingleton(cloudinary);
+builder.Services.AddSingleton<ICloudinaryService, CloudinaryService>();
+builder.Services.Configure<CloudinaryService>(builder.Configuration.GetSection("Cloudinary"));
 
 var app = builder.Build();
 
