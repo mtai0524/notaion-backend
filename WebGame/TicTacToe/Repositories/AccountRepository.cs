@@ -80,14 +80,28 @@ namespace Notaion.Repositories
                 return IdentityResult.Failed(new IdentityError { Description = "Password and confirmation password do not match." });
             }
 
-            var user = new User
+            User existingUserByEmail = await userManager.FindByEmailAsync(model.Email);
+            User existingUserByUsername = await userManager.FindByNameAsync(model.Username);
+
+            if (existingUserByEmail != null)
+            {
+                return IdentityResult.Failed(new IdentityError { Description = "A user with this email already exists." });
+            }
+
+            if (existingUserByUsername != null)
+            {
+                return IdentityResult.Failed(new IdentityError { Description = "A user with this username already exists." });
+            }
+
+
+            var newUser = new User
             {
                 Email = model.Email,
                 UserName = model.Username,
+                EmailConfirmed = true
             };
-            user.EmailConfirmed = true;
 
-            var result = await userManager.CreateAsync(user, model.Password);
+            var result = await userManager.CreateAsync(newUser, model.Password);
 
             return result;
         }

@@ -31,12 +31,14 @@ namespace WebAPI.Controllers
         public async Task<IActionResult> SignUp(SignUpModel signUpModel)
         {
             var result = await accountRepo.SignUpAsync(signUpModel);
-            if (result.Succeeded)
+
+            if (!result.Succeeded)
             {
-                return Ok(result.Succeeded);
+                var errors = result.Errors.Select(e => e.Description).ToList();
+                return BadRequest(new { errors });
             }
 
-            return Unauthorized();
+            return Ok(new { message = "User registered successfully." });
         }
 
         [HttpPost("SignIn")]
