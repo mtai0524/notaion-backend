@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace Notaion.Models
+namespace Notaion.Entities
 {
     public class Item
     {

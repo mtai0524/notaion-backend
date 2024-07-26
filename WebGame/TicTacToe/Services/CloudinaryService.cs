@@ -1,5 +1,7 @@
 ﻿using CloudinaryDotNet;
 using CloudinaryDotNet.Actions;
+using Microsoft.AspNetCore.Components.Forms;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Notaion.Configurations;
 using System.IO;
@@ -21,7 +23,7 @@ namespace Notaion.Services
             _cloudinary = cloudinary;
         }
 
-       
+        [RequestSizeLimit(1024 * 1024 * 100)]
         public async Task<string> UploadImageAsync(IFormFile imageFile)
         {
             try

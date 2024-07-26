@@ -5,8 +5,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Notaion.Configurations;
 using Notaion.Context;
-using Notaion.Models;
 using Notaion.Services;
+using Notaion.Entities;
 
 namespace Notaion.Controllers
 {
