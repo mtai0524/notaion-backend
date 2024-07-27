@@ -56,6 +56,7 @@ namespace Notaion.Repositories
                 new Claim(ClaimTypes.NameIdentifier, userId),
                 new Claim(ClaimTypes.Name, user.UserName),
                 new Claim(ClaimTypes.Email, user.Email),
+                new Claim(ClaimTypes.Country, user.Avatar),
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
             };
    
@@ -75,22 +76,22 @@ namespace Notaion.Repositories
 
         public async Task<IdentityResult> SignUpAsync(SignUpModel model) // đăng kí
         {
-            if (model.Password != model.ConfirmPassword)
-            {
-                return IdentityResult.Failed(new IdentityError { Description = "Password and confirmation password do not match." });
-            }
+            //if (model.Password != model.ConfirmPassword)
+            //{
+            //    return IdentityResult.Failed(new IdentityError { Description = "Password and confirmation password do not match." });
+            //}
 
             User existingUserByEmail = await userManager.FindByEmailAsync(model.Email);
             User existingUserByUsername = await userManager.FindByNameAsync(model.Username);
 
             if (existingUserByEmail != null)
             {
-                return IdentityResult.Failed(new IdentityError { Description = "A user with this email already exists." });
+                return IdentityResult.Failed(new IdentityError { Description = "Email exists" });
             }
 
             if (existingUserByUsername != null)
             {
-                return IdentityResult.Failed(new IdentityError { Description = "A user with this username already exists." });
+                return IdentityResult.Failed(new IdentityError { Description = "Username exists" });
             }
 
 
@@ -98,7 +99,8 @@ namespace Notaion.Repositories
             {
                 Email = model.Email,
                 UserName = model.Username,
-                EmailConfirmed = true
+                EmailConfirmed = true,
+                Avatar = model.Avatar,
             };
 
             var result = await userManager.CreateAsync(newUser, model.Password);

@@ -9,6 +9,7 @@ using Notaion.Repositories;
 using Notaion.Models;
 using Notaion.Context;
 using Microsoft.AspNetCore.Http.HttpResults;
+using System.Net;
 
 namespace WebAPI.Controllers
 {
@@ -26,6 +27,58 @@ namespace WebAPI.Controllers
             _userManager = userManager;
             _context = context;
         }
+        [HttpGet("profile/{identifier}")]
+        public async Task<IActionResult> Profile(string identifier)
+        {
+            var isUUID = Guid.TryParse(identifier, out _);
+
+            User user;
+
+            if (isUUID)
+            {
+                // find user by Id
+                user = await _context.User.FindAsync(identifier);
+            }
+            else
+            {
+                // find user by username
+                user = await _context.User
+                    .Where(x=> x.UserName == identifier)
+                    .FirstOrDefaultAsync();
+            }
+
+            if (user == null)
+            {
+                return NotFound();
+            }
+
+            var userProfile = new UserProfile
+            {
+                UserName = user.UserName,
+                Email = user.Email,
+                Avatar = user.Avatar,
+            };
+
+            return Ok(userProfile);
+        }
+
+        [HttpPost("change-avatar/{id}/{avatar}")]
+        public async Task<IActionResult> ChangeAvatar(string id, string avatar)
+        {
+            string decodedAvatarUrl = WebUtility.UrlDecode(avatar);
+            var user = await _context.User.FindAsync(id);
+
+            if (user != null)
+            {
+                user.Avatar = decodedAvatarUrl;
+                _context.Update(user);
+                await _context.SaveChangesAsync();
+                return Ok(new { message = "Update successfully" });
+            }
+
+            return Ok(new { message = "Failed" });
+        }
+
 
         [HttpPost("SignUp")]
         public async Task<IActionResult> SignUp(SignUpModel signUpModel)
@@ -48,12 +101,12 @@ namespace WebAPI.Controllers
 
             if (result.Contains("UserNotFound"))
             {
-                return Unauthorized(new { message = "User not found. Please check your username or email." });
+                return Unauthorized(new { message = "User not found" });
             }
 
             if (result.Contains("InvalidPassword"))
             {
-                return Unauthorized(new { message = "Incorrect password. Please try again." });
+                return Unauthorized(new { message = "Incorrect password" });
             }
 
             return Ok(new { token = result });
