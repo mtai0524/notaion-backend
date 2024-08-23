@@ -31,7 +31,7 @@ namespace Notaion.Controllers
                 UserId = createPage.UserId,
                 CreatedAt = vietnamTime,
                 UpdatedAt = vietnamTime,
-                Public = createPage.Public
+                Public = false,
             };
 
             _context.Page.Add(page);
@@ -40,6 +40,17 @@ namespace Notaion.Controllers
             return CreatedAtAction(nameof(GetPageById), new { id = page.Id }, page);
         }
 
+        [HttpPost("public-page/{id}")]
+        public async Task<IActionResult> PublicPage(string id)
+        {
+            var page = await _context.Page.Where(x => x.Id == id).FirstOrDefaultAsync();
+            if (page == null)
+                return BadRequest();
+            page.Public = true;
+            _context.Update(page);
+            await _context.SaveChangesAsync();
+            return Ok();
+        }
 
         [HttpGet("{id}")]
         public async Task<IActionResult> GetPageById(string id)
@@ -58,7 +69,11 @@ namespace Notaion.Controllers
         public async Task<IActionResult> GetPagesByUserId(string userId)
         {
             var pages = await _context.Page.Where(p => p.UserId == userId).ToListAsync();
-
+            var pagesByUsername = await _context.Page.Where(p => p.User.UserName == userId).ToListAsync();
+            if (pagesByUsername.Any())
+            {
+                return Ok(pagesByUsername);
+            }
             if (!pages.Any())
             {
                 return NotFound();
@@ -71,6 +86,9 @@ namespace Notaion.Controllers
         public async Task<IActionResult> UpdatePageContent(string id, [FromBody] UpdatePageContentDto updatePageContentDto)
         {
             var page = await _context.Page.FindAsync(id);
+            var vietnamTimeZone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
+            var vietnamTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, vietnamTimeZone);
+
             if (page == null)
             {
                 return NotFound();
@@ -78,24 +96,26 @@ namespace Notaion.Controllers
 
             page.Content = updatePageContentDto.Content;
             page.Title = updatePageContentDto.Title;
+            page.UpdatedAt = vietnamTime;
 
             _context.Page.Update(page);
             await _context.SaveChangesAsync();
 
             return NoContent();
         }
-            [HttpDelete("{id}")]
-            public async Task<IActionResult> DeletePage (string id)
+
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeletePage(string id)
+        {
+            var page = await _context.Page.Where(x=> x.Id == id).FirstOrDefaultAsync();
+            if (page == null)
             {
-                var page = await _context.Page.Where(x=> x.Id == id).FirstOrDefaultAsync();
-                if (page == null)
-                {
-                    return NotFound();
-                }
-                _context.Page.Remove(page);
-                await _context.SaveChangesAsync();
-                return Ok();
+                return NotFound();
             }
+            _context.Page.Remove(page);
+            await _context.SaveChangesAsync();
+            return Ok();
+        }
 
     }
 }
