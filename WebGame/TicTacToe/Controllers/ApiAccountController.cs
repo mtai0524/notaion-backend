@@ -33,7 +33,7 @@ namespace WebAPI.Controllers
         {
             var user = await _context.User
                 .Where(u => u.Id == userId)
-                .Select(u => new { u.Id, u.UserName, u.Avatar }) // Giả sử bạn có trường AvatarUrl
+                .Select(u => new { u.Id, u.UserName, u.Avatar })
                 .FirstOrDefaultAsync();
 
             if (user == null)

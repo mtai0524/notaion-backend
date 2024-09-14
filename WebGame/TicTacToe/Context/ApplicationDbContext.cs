@@ -16,5 +16,6 @@ namespace Notaion.Context
         public DbSet<User> User { get; set; }
         public DbSet<Page> Page { get; set; }
         public DbSet<Chat> Chat { get; set; }
+        public DbSet<Notification> Notification{ get; set; }
     }
 }
