@@ -27,6 +27,24 @@ namespace WebAPI.Controllers
             _userManager = userManager;
             _context = context;
         }
+
+        [HttpGet("user/{userId}")]
+        public async Task<IActionResult> GetUserInfo(string userId)
+        {
+            var user = await _context.User
+                .Where(u => u.Id == userId)
+                .Select(u => new { u.Id, u.UserName, u.Avatar }) // Giả sử bạn có trường AvatarUrl
+                .FirstOrDefaultAsync();
+
+            if (user == null)
+            {
+                return NotFound("User not found");
+            }
+
+            return Ok(user);
+        }
+
+
         [HttpGet("profile/{identifier}")]
         public async Task<IActionResult> Profile(string identifier)
         {

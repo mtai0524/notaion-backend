@@ -9,5 +9,6 @@ namespace Notaion.Entities
         public string? Content { get; set; }
         public string? Heading { get; set; }
         public int? Order { get; set; }
+        public bool IsHide { get; set; } = false;
     }
 }

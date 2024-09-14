@@ -8,6 +8,7 @@ using Notaion.Services;
 using Notaion.Hubs;
 using System.Threading.Tasks;
 using System.Linq;
+using Microsoft.EntityFrameworkCore;
 
 namespace Notaion.Controllers
 {
@@ -33,9 +34,30 @@ namespace Notaion.Controllers
                     c.Id,
                     c.Content,
                     c.SentDate,
-                    UserName = c.User.UserName
+                    UserName = c.User.UserName,
+                    c.Hide
                 })
                 .OrderBy(c => c.SentDate)
+                .Where(x => x.Hide == false)
+                .ToList();
+
+            return Ok(chats);
+        }
+
+        [HttpGet("get-chats-hidden")]
+        public IActionResult GetChatsHidden()
+        {
+            var chats = _context.Chat
+                .Select(c => new
+                {
+                    c.Id,
+                    c.Content,
+                    c.SentDate,
+                    UserName = c.User.UserName,
+                    c.Hide
+                })
+                .OrderBy(c => c.SentDate)
+                .Where(x => x.Hide == true)
                 .ToList();
 
             return Ok(chats);
@@ -72,5 +94,37 @@ namespace Notaion.Controllers
 
             return Ok(chat);
         }
+
+        [HttpDelete("delete-all-chats")]
+        public async Task<IActionResult> DeleteAllChats()
+        {
+            var listChats = await _context.Chat.ToListAsync();
+
+            foreach (var chat in listChats)
+            {
+                chat.Hide = true;
+            }
+            _context.UpdateRange(listChats);
+            await _context.SaveChangesAsync();
+            return Ok();
+        }
+
+        [HttpDelete("delete-me-chats/{id}")]
+        public async Task<IActionResult> DeleteMeChats(string id)
+        {
+            var listChats = await _context.Chat.Where(x => x.User.Id == id).ToListAsync();
+            if (listChats == null)
+            {
+                return BadRequest();
+            }
+            foreach (var chat in listChats)
+            {
+                chat.Hide = true;
+            }
+            _context.UpdateRange(listChats);
+            await _context.SaveChangesAsync();
+            return Ok();
+        }
     }
 }
+

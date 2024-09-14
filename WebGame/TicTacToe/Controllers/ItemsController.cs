@@ -26,9 +26,13 @@ namespace Notaion.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Item>>> GetItems()
         {
-            return await _context.Items.OrderBy(x => x.Order).ToListAsync();
+            return await _context.Items.OrderBy(x => x.Order).Where(x => x.IsHide == false).ToListAsync();
         }
-
+        [HttpGet("get-list-items-hidden")]
+        public async Task<ActionResult<IEnumerable<Item>>> GetItemsHidden()
+        {
+            return await _context.Items.OrderBy(x => x.Order).Where(x => x.IsHide == true).ToListAsync();
+        }
         // POST: api/Items
         [HttpPost]
         public async Task<ActionResult<Item>> PostItem(Item item)
@@ -71,7 +75,11 @@ namespace Notaion.Controllers
             {
                 // Xóa tất cả các mục
                 var items = await _context.Items.ToListAsync();
-                _context.Items.RemoveRange(items);
+                foreach (var item in items)
+                {
+                    item.IsHide = true;
+                }
+                _context.UpdateRange(items);
                 await _context.SaveChangesAsync();
 
                 return Ok(new { message = "All items deleted successfully." });
@@ -87,11 +95,12 @@ namespace Notaion.Controllers
         {
             try
             {
-                var items = await _context.Items.Where(x => x.Id == id).ToListAsync();
+                var item = await _context.Items.Where(x => x.Id == id).FirstOrDefaultAsync();
 
-                if (items.Any())
+                if (item != null)
                 {
-                    _context.Items.RemoveRange(items);
+                    item.IsHide = true;
+                    _context.Update(item);
                     await _context.SaveChangesAsync();
                     return Ok(new { message = "Deleted" });
                 }
