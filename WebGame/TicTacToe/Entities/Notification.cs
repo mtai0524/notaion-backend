@@ -15,7 +15,7 @@ namespace Notaion.Entities
         public string? SenderName { get; set; }    
         public string? ReceiverName { get; set; }  
         public string? SenderAvatar { get; set; }
-
+        public bool IsRead { get; set; } = false;
         public Notification()
         {
             Timestamp = DateTime.UtcNow;  

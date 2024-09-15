@@ -21,14 +21,7 @@ namespace Notaion.Controllers
             _context = context;
         }
 
-        [HttpDelete]
-        public async Task<IActionResult> DeleteNotiList()
-        {
-            var listNotis = await _context.Notification.ToListAsync();
-            _context.RemoveRange(listNotis);
-            await _context.SaveChangesAsync();
-            return Ok();
-        }
+       
 
         [HttpPost("send-friend-request")]
         public async Task<IActionResult> SendFriendRequest([FromBody] FriendRequestDto request)
@@ -40,6 +33,12 @@ namespace Notaion.Controllers
             if (recvUser == null)
             {
                 return NotFound("Recipient not found");
+            }
+
+            var existingNotification = await _context.Notification.Where(x => x.SenderId == request.RequesterId && x.ReceiverId == recvUser.Id).FirstOrDefaultAsync();
+            if (existingNotification != null)
+            {
+                return BadRequest("Friend request already sent");
             }
 
             var notification = new Notification
@@ -55,25 +54,9 @@ namespace Notaion.Controllers
             _context.Notification.Add(notification);
             await _context.SaveChangesAsync();
 
-            await _hubContext.Clients.All.SendAsync("ReceiveFriendRequest", request.RequesterId, recvUser.Id, request.RequesterName);
+            await _hubContext.Clients.All.SendAsync("ReceiveFriendRequest", request.RequesterId, recvUser.Id, request.RequesterName, notification.Id);
 
             return Ok();
-        }
-
-
-        [HttpGet("get-noti-by-recvid/{id}")]
-        public async Task<IActionResult> GetNotiByRecvId(string id)
-        {
-            if (string.IsNullOrEmpty(id))
-            {
-                return BadRequest("Recipient ID cannot be null or empty.");
-            }
-
-            var notiLists = await _context.Notification
-                .Where(x => x.ReceiverId == id)
-                .ToListAsync();
-
-            return Ok(notiLists);
         }
 
 

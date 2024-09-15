@@ -4,10 +4,10 @@ namespace Notaion.Hubs
 {
     public class ChatHub : Hub
     {
-        public async Task SendFriendRequest(string receiverConnectionId, string senderId, string receiverId, string senderName)
-        {
-            await Clients.Client(receiverConnectionId).SendAsync("ReceiveFriendRequest", senderId, receiverId, senderName);
-        }
+        //public async Task SendFriendRequest(string receiverConnectionId, string senderId, string receiverId, string senderName)
+        //{
+        //    await Clients.Client(receiverConnectionId).SendAsync("ReceiveFriendRequest", senderId, receiverId, senderName);
+        //}
 
         public async Task SendNotification(string userId, string message)
         {
