@@ -10,6 +10,9 @@ using Notaion.Models;
 using Notaion.Context;
 using Microsoft.AspNetCore.Http.HttpResults;
 using System.Net;
+using Microsoft.AspNetCore.SignalR;
+using Notaion.Hubs;
+using Notaion.Entities;
 
 namespace WebAPI.Controllers
 {
@@ -20,12 +23,15 @@ namespace WebAPI.Controllers
         private readonly IAccountRepository accountRepo;
         private readonly UserManager<User> _userManager;
         private readonly ApplicationDbContext _context;
+        private readonly IHubContext<ChatHub> _hubContext;
 
-        public AccountsController(IAccountRepository repo, UserManager<User> userManager, ApplicationDbContext context)
+        public AccountsController(IAccountRepository repo, UserManager<User> userManager, ApplicationDbContext context, IHubContext<ChatHub> hubContext)
         {
             accountRepo = repo;
             _userManager = userManager;
             _context = context;
+            _hubContext = hubContext;
+
         }
 
         [HttpGet("user/{userId}")]
@@ -127,8 +133,36 @@ namespace WebAPI.Controllers
                 return Unauthorized(new { message = "Incorrect password" });
             }
 
+            User user = null;
+            if (signInModel.Email.Contains("@"))
+            {
+                // find user by email
+                user = await _userManager.FindByEmailAsync(signInModel.Email);
+            }
+            else
+            {
+                // find user by username
+                user = await _userManager.FindByNameAsync(signInModel.Email);
+            }
+
+            if (user == null)
+            {
+                return Unauthorized(new { message = "User not found" });
+            }
+
+            // Create object with userId and userName
+            var userInfo = new
+            {
+                userId = user.Id,
+                userName = user.UserName
+            };
+
+            // Send the user information object to all clients via SignalR
+            await _hubContext.Clients.All.SendAsync("ReceiveOnlineUsers", new[] { userInfo });
+
             return Ok(new { token = result });
         }
+
 
     }
 }

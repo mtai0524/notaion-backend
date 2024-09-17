@@ -1,13 +1,16 @@
 using CloudinaryDotNet;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Identity.Web;
 using Microsoft.IdentityModel.Tokens;
 using Notaion.Configurations;
 using Notaion.Context;
+using Notaion.Helpers;
 using Notaion.Hubs;
 using Notaion.Models;
 using Notaion.Repositories;
@@ -49,14 +52,42 @@ var apiSecret = configuration["Cloudinary:ApiSecret"];
 
 var cloudinaryAccount = new Account(cloudName, apiKey, apiSecret);
 var cloudinary = new Cloudinary(cloudinaryAccount);
+
+// Services inject
+builder.Services.AddScoped<UserService>();
 builder.Services.AddSingleton(cloudinary);
 builder.Services.AddSingleton<ICloudinaryService, CloudinaryService>();
 builder.Services.AddScoped<IAccountRepository, AccountRepository>();
 builder.Services.AddTransient<ApplicationDbContext>();
 
 builder.Services.AddDefaultIdentity<User>(options => options.SignIn.RequireConfirmedAccount = false)
-    .AddEntityFrameworkStores<ApplicationDbContext>();
+    .AddEntityFrameworkStores<ApplicationDbContext>()
+    .AddDefaultTokenProviders();
+builder.Services.AddHttpClient();
+builder.Services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
+// Session
+builder.Services.AddDistributedMemoryCache();
+builder.Services.AddSession();
+builder.Services.AddControllersWithViews();
 
+builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+        .AddCookie(options =>
+        {
+            options.LoginPath = "/Account/Login";
+            options.LogoutPath = "/Account/Logout";
+        });
+builder.Services.AddAuthorization();
+builder.Services.AddSignalR().AddHubOptions<ChatHub>(options =>
+{
+    options.EnableDetailedErrors = true;
+});
+builder.Services.AddResponseCompression(options =>
+{
+    options.MimeTypes = ResponseCompressionDefaults.MimeTypes.Concat(new[]
+    {
+        "application/octet-stream"
+    });
+});
 
 builder.Services.Configure<IdentityOptions>(options =>
 {
@@ -86,21 +117,41 @@ builder.Services.AddAuthentication(options =>
     {
         ValidateIssuer = true,
         ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
         ValidAudience = builder.Configuration["JWT:ValidAudience"],
         ValidIssuer = builder.Configuration["JWT:ValidIssuer"],
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["JWT:Secret"]))
     };
+    options.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+            var token = context.Request.Cookies["token"];
+            if (!string.IsNullOrEmpty(token))
+            {
+                context.Token = token;
+                Console.WriteLine($"Token from cookie: {token}");  // Kiểm tra token
+            }
+            else
+            {
+                Console.WriteLine("No token found in cookie.");
+            }
+            return Task.CompletedTask;
+        }
+    };
 });
 
 
-builder.Services.AddSignalR().AddHubOptions<ChatHub>(options =>
-{
-    options.ClientTimeoutInterval = TimeSpan.FromMinutes(5);
-    options.KeepAliveInterval = TimeSpan.FromMinutes(2);
-}).AddJsonProtocol(options =>
-{
-    options.PayloadSerializerOptions.PropertyNamingPolicy = null;
-});
+
+//builder.Services.AddSignalR().AddHubOptions<ChatHub>(options =>
+//{
+//    options.ClientTimeoutInterval = TimeSpan.FromMinutes(5);
+//    options.KeepAliveInterval = TimeSpan.FromMinutes(2);
+//}).AddJsonProtocol(options =>
+//{
+//    options.PayloadSerializerOptions.PropertyNamingPolicy = null;
+//});
 
 var app = builder.Build();
 
@@ -118,6 +169,6 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.UseCors("AllowAllOrigins");
-
+app.UseSession();
 app.Run();
 

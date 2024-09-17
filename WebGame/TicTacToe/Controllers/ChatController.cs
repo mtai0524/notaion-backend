@@ -89,7 +89,7 @@ namespace Notaion.Controllers
 
             _context.Chat.Add(chat);
             await _context.SaveChangesAsync();
-
+       
             await _hubContext.Clients.All.SendAsync("ReceiveMessage", userName, chat.Content);
 
             return Ok(chat);

@@ -1,4 +1,8 @@
 ﻿using Microsoft.AspNetCore.SignalR;
+using Notaion.Models;
+using Notaion.Services;
+using System.Collections.Concurrent;
+using System.Security.Claims;
 
 namespace Notaion.Hubs
 {
@@ -39,5 +43,42 @@ namespace Notaion.Hubs
             await Groups.AddToGroupAsync(Context.ConnectionId, groupName);
             await Clients.Group(groupName).SendAsync("ReceiveMessage", "System", $"{Context.ConnectionId} has created and joined the group {groupName}.");
         }
+        private readonly UserService _userService;
+
+        public ChatHub(UserService userService)
+        {
+            _userService = userService;
+        }
+
+
+        private static ConcurrentDictionary<string, (string UserId, string UserName)> OnlineUsers = new ConcurrentDictionary<string, (string UserId, string UserName)>();
+
+
+
+        public async Task RegisterUser(RegisterUserModel user)
+        {
+            OnlineUsers.TryAdd(Context.ConnectionId, (user.UserId, user.UserName));
+
+            var userList = OnlineUsers.Values.Select(u => new { u.UserId, u.UserName }).ToList();
+
+            await Clients.All.SendAsync("ReceiveOnlineUsers", userList);
+        }
+
+
+
+        public override async Task OnDisconnectedAsync(Exception? exception)
+        {
+            if (OnlineUsers.TryRemove(Context.ConnectionId, out var user))
+            {
+                await Clients.All.SendAsync("UserDisconnected", user.UserId);
+            }
+
+            await base.OnDisconnectedAsync(exception);
+        }
+    }
+    public class RegisterUserModel
+    {
+        public string UserId { get; set; }
+        public string UserName { get; set; }
     }
 }
