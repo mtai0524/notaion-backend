@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.SignalR;
+using Microsoft.CodeAnalysis.Elfie.Serialization;
 using Notaion.Models;
 using Notaion.Services;
 using System.Collections.Concurrent;
@@ -51,15 +52,15 @@ namespace Notaion.Hubs
         }
 
 
-        private static ConcurrentDictionary<string, (string UserId, string UserName)> OnlineUsers = new ConcurrentDictionary<string, (string UserId, string UserName)>();
+        private static ConcurrentDictionary<string, (string UserId, string UserName, string Avatar)> OnlineUsers = new ConcurrentDictionary<string, (string UserId, string UserName, string Avatar)>();
 
 
 
-        public async Task RegisterUser(RegisterUserModel user)
+        public async Task RegisterUser(RegisterUserModel user) // react call RegisterUser with invoke 
         {
-            OnlineUsers.TryAdd(Context.ConnectionId, (user.UserId, user.UserName));
+            OnlineUsers.TryAdd(Context.ConnectionId, (user.UserId, user.UserName, user.Avatar));
 
-            var userList = OnlineUsers.Values.Select(u => new { u.UserId, u.UserName }).ToList();
+            var userList = OnlineUsers.Values.Select(u => new { u.UserId, u.UserName, u.Avatar }).ToList();
 
             await Clients.All.SendAsync("ReceiveOnlineUsers", userList);
         }
@@ -75,10 +76,25 @@ namespace Notaion.Hubs
 
             await base.OnDisconnectedAsync(exception);
         }
+
+        public async Task LogoutUser(string userId) // react call LogoutUser with invoke 
+        {
+            // find user by userId
+            var userConnectionId = OnlineUsers.FirstOrDefault(x => x.Value.UserId == userId).Key;
+
+            if (userConnectionId != null)
+            {
+                OnlineUsers.TryRemove(userConnectionId, out var removedUser);
+
+                await Clients.All.SendAsync("UserDisconnected", removedUser.UserId);
+            }
+        }
+
     }
     public class RegisterUserModel
     {
         public string UserId { get; set; }
         public string UserName { get; set; }
+        public string Avatar { get; set; }
     }
 }

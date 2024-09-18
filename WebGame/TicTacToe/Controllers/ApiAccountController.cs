@@ -154,10 +154,11 @@ namespace WebAPI.Controllers
             var userInfo = new
             {
                 userId = user.Id,
-                userName = user.UserName
+                userName = user.UserName,
+                avatar = user.Avatar
             };
 
-            // Send the user information object to all clients via SignalR
+            // Send object to all clients when login
             await _hubContext.Clients.All.SendAsync("ReceiveOnlineUsers", new[] { userInfo });
 
             return Ok(new { token = result });
