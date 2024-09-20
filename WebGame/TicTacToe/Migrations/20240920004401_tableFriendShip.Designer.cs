@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Notaion.Context;
 
@@ -11,9 +12,11 @@ using Notaion.Context;
 namespace Notaion.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20240920004401_tableFriendShip")]
+    partial class tableFriendShip
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -232,6 +235,31 @@ namespace Notaion.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("Notaion.Controllers.FriendShip", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime?>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ReceiverId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("SenderId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Status")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("FriendShip");
+                });
+
             modelBuilder.Entity("Notaion.Entities.Chat", b =>
                 {
                     b.Property<string>("Id")
@@ -257,35 +285,6 @@ namespace Notaion.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("Chat");
-                });
-
-            modelBuilder.Entity("Notaion.Entities.FriendShip", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<DateTime?>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("ReceiverId")
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<string>("SenderId")
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<string>("Status")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ReceiverId");
-
-                    b.HasIndex("SenderId");
-
-                    b.ToTable("FriendShip");
                 });
 
             modelBuilder.Entity("Notaion.Entities.Item", b =>
@@ -443,21 +442,6 @@ namespace Notaion.Migrations
                         .HasForeignKey("UserId");
 
                     b.Navigation("User");
-                });
-
-            modelBuilder.Entity("Notaion.Entities.FriendShip", b =>
-                {
-                    b.HasOne("Notaion.Models.User", "ReceiverUser")
-                        .WithMany()
-                        .HasForeignKey("ReceiverId");
-
-                    b.HasOne("Notaion.Models.User", "SenderUser")
-                        .WithMany()
-                        .HasForeignKey("SenderId");
-
-                    b.Navigation("ReceiverUser");
-
-                    b.Navigation("SenderUser");
                 });
 
             modelBuilder.Entity("Notaion.Entities.Page", b =>

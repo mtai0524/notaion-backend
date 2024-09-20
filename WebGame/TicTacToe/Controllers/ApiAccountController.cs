@@ -86,7 +86,7 @@ namespace WebAPI.Controllers
             return Ok(userProfile);
         }
 
-        [HttpPost("change-avatar/{id}/{avatar}")]
+        [HttpPut("change-avatar/{id}/{avatar}")]
         public async Task<IActionResult> ChangeAvatar(string id, string avatar)
         {
             string decodedAvatarUrl = WebUtility.UrlDecode(avatar);
@@ -97,7 +97,7 @@ namespace WebAPI.Controllers
                 user.Avatar = decodedAvatarUrl;
                 _context.Update(user);
                 await _context.SaveChangesAsync();
-                return Ok(new { message = "Update successfully" });
+                return Ok(new { message = "Update successfully", avatar = user.Avatar });
             }
 
             return Ok(new { message = "Failed" });
