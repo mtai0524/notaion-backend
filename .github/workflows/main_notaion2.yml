@@ -19,7 +19,7 @@ jobs:
           dotnet-version: '8.x'
 
       - name: Build with dotnet
-        run: dotnet build --configuration Release WebGame/NotionWebApp.sln
+        run: dotnet publish WebGame/NotionWebApp.sln -c Release -o ./myapp
 
       - name: dotnet publish
         run: dotnet publish -c Release -o ${{env.DOTNET_ROOT}}/myapp
