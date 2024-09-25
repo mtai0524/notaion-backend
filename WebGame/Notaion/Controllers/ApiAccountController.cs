@@ -34,6 +34,28 @@ namespace WebAPI.Controllers
 
         }
 
+        [HttpGet("get-all-user")]
+        public async Task<IActionResult> GetAllUser()
+        {
+            var user = await _context.User.
+            Select(u => new
+            {
+                u.Id,
+                u.UserName,
+            })
+            .ToListAsync();
+            return Ok(user);
+        }
+
+        //[HttpDelete("delete-user/{id}")]
+        //public async Task<IActionResult> DeleteUserById(string id)
+        //{
+        //    var user = await _context.User.FirstOrDefaultAsync(x => x.Id == id);
+        //    _context.Remove(user);
+        //    await _context.SaveChangesAsync();
+        //    return Ok(user);
+        //}
+
         [HttpGet("user/{userId}")]
         public async Task<IActionResult> GetUserInfo(string userId)
         {
@@ -67,7 +89,7 @@ namespace WebAPI.Controllers
             {
                 // find user by username
                 user = await _context.User
-                    .Where(x=> x.UserName == identifier)
+                    .Where(x => x.UserName == identifier)
                     .FirstOrDefaultAsync();
             }
 

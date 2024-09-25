@@ -1,3 +1,6 @@
+# Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
+# More GitHub Actions for Azure: https://github.com/Azure/actions
+
 name: Build and deploy ASP.Net Core app to Azure Web App - chat-console
 
 on:
@@ -19,21 +22,16 @@ jobs:
           dotnet-version: '8.x'
 
       - name: Build with dotnet
-        run: dotnet build WebGame/NotionWebApp.sln --configuration Release
+        run: dotnet build --configuration Release
 
       - name: dotnet publish
-        run: dotnet publish WebGame/NotionWebApp.sln -c Release -o "./myapp"
-
-      - name: List published files
-        run: |
-          echo "Listing published files:"
-          ls -alh ./myapp
+        run: dotnet publish -c Release -o ${{env.DOTNET_ROOT}}/myapp
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
-          name: .net-app-${{ github.run_id }}  # Use unique artifact name
-          path: ./myapp  # Adjusted path to use relative path
+          name: .net-app
+          path: ${{env.DOTNET_ROOT}}/myapp
 
   deploy:
     runs-on: windows-latest
@@ -46,13 +44,13 @@ jobs:
       - name: Download artifact from build job
         uses: actions/download-artifact@v4
         with:
-          name: .net-app-${{ needs.build.outputs.artifact-name }}  # Use the same unique name
-
+          name: .net-app
+      
       - name: Deploy to Azure Web App
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
         with:
           app-name: 'chat-console'
           slot-name: 'production'
-          package: .  # Ensure this points to the correct package path
+          package: .
           publish-profile: ${{ secrets.AzureAppService_PublishProfile_1234 }}

@@ -13,9 +13,16 @@ namespace Notaion.Controllers
     {
         private readonly ApplicationDbContext _context;
 
-        public NotificationController( ApplicationDbContext context)
+        public NotificationController(ApplicationDbContext context)
         {
             _context = context;
+        }
+
+        [HttpGet("get-all-noti")]
+        public async Task<IActionResult> GetAllNoti()
+        {
+            var listNotis = await _context.Notification.ToListAsync();
+            return Ok(listNotis);
         }
 
         [HttpDelete]

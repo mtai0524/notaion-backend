@@ -10,7 +10,6 @@ using Microsoft.Identity.Web;
 using Microsoft.IdentityModel.Tokens;
 using Notaion.Configurations;
 using Notaion.Context;
-using Notaion.Helpers;
 using Notaion.Hubs;
 using Notaion.Models;
 using Notaion.Repositories;
@@ -123,23 +122,6 @@ builder.Services.AddAuthentication(options =>
         ValidIssuer = builder.Configuration["JWT:ValidIssuer"],
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["JWT:Secret"]))
     };
-    options.Events = new JwtBearerEvents
-    {
-        OnMessageReceived = context =>
-        {
-            var token = context.Request.Cookies["token"];
-            if (!string.IsNullOrEmpty(token))
-            {
-                context.Token = token;
-                Console.WriteLine($"Token from cookie: {token}");  // Kiểm tra token
-            }
-            else
-            {
-                Console.WriteLine("No token found in cookie.");
-            }
-            return Task.CompletedTask;
-        }
-    };
 });
 
 
@@ -157,8 +139,8 @@ var app = builder.Build();
 
 //if (app.Environment.IsDevelopment())
 //{
-    app.UseSwagger();
-    app.UseSwaggerUI();
+app.UseSwagger();
+app.UseSwaggerUI();
 //}
 app.MapHub<ChatHub>("/chatHub");
 
