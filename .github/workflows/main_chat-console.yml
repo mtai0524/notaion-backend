@@ -23,10 +23,10 @@ jobs:
           include-prerelease: true
 
       - name: Build with dotnet
-        run: dotnet build --configuration Release WebGame/NotionWebApp.sln
+        run: dotnet build --configuration Release
 
       - name: dotnet publish
-        run: dotnet publish WebGame/NotionWebApp.sln -c Release -o ./myapp
+        run: dotnet publish -c Release -o ${{env.DOTNET_ROOT}}/myapp
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v3
@@ -53,5 +53,5 @@ jobs:
         with:
           app-name: 'chat-console'
           slot-name: 'Production'
-          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_3D1C9A9CBB984696ACD5E38363A00888 }}
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_811721D88DC8489888A99C19B07A8F69 }}
           package: .
