@@ -19,10 +19,11 @@ jobs:
           dotnet-version: '8.x'
 
       - name: Build with dotnet
-        run: dotnet publish WebGame/NotionWebApp.sln -c Release -o ./myapp
+        run: dotnet build --configuration Release WebGame/NotionWebApp.sln
 
       - name: dotnet publish
-        run: dotnet publish -c Release -o ${{env.DOTNET_ROOT}}/myapp
+        run: dotnet publish WebGame/NotionWebApp.sln -c Release -o ./myapp
+
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
