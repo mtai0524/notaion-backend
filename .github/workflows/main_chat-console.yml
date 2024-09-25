@@ -24,11 +24,16 @@ jobs:
       - name: dotnet publish
         run: dotnet publish WebGame/NotionWebApp.sln -c Release -o "./myapp"
 
+      - name: List published files
+        run: |
+          echo "Listing published files:"
+          ls -alh ./myapp
+
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
-          name: .net-app
-          path: ${{env.DOTNET_ROOT}}/myapp
+          name: .net-app-${{ github.run_id }}  # Use unique artifact name
+          path: ./myapp  # Adjusted path to use relative path
 
   deploy:
     runs-on: windows-latest
@@ -41,13 +46,13 @@ jobs:
       - name: Download artifact from build job
         uses: actions/download-artifact@v4
         with:
-          name: .net-app
-      
+          name: .net-app-${{ needs.build.outputs.artifact-name }}  # Use the same unique name
+
       - name: Deploy to Azure Web App
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
         with:
           app-name: 'chat-console'
           slot-name: 'production'
-          package: .
+          package: .  # Ensure this points to the correct package path
           publish-profile: ${{ secrets.AzureAppService_PublishProfile_1234 }}
