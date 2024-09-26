@@ -34,7 +34,7 @@ namespace WebAPI.Controllers
 
         }
 
-        [HttpGet("get-all-user")]
+        [HttpGet("get-users")]
         public async Task<IActionResult> GetAllUser()
         {
             var user = await _context.User.
