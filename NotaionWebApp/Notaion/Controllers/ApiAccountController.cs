@@ -34,7 +34,7 @@ namespace WebAPI.Controllers
 
         }
 
-        [HttpGet("get-users")]
+        [HttpGet("get-users-demo-jenkins-cicd")]
         public async Task<IActionResult> GetAllUser()
         {
             var user = await _context.User.
