@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Notaion.Context;
 using Notaion.Entities;
 using Notaion.Models;
+using System.Security.Claims;
 
 namespace Notaion.Controllers
 {
@@ -85,6 +86,9 @@ namespace Notaion.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdatePageContent(string id, [FromBody] UpdatePageContentDto updatePageContentDto)
         {
+            var currentUserId = updatePageContentDto.UserId;
+
+            // Find the page by its ID
             var page = await _context.Page.FindAsync(id);
             var vietnamTimeZone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
             var vietnamTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, vietnamTimeZone);
@@ -92,6 +96,11 @@ namespace Notaion.Controllers
             if (page == null)
             {
                 return NotFound();
+            }
+
+            if (page.UserId != currentUserId)
+            {
+                return Forbid("You are not authorized to edit this page.");
             }
 
             page.Content = updatePageContentDto.Content;
@@ -103,6 +112,7 @@ namespace Notaion.Controllers
 
             return NoContent();
         }
+
 
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeletePage(string id)
