@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Notaion.Context;
 
@@ -11,9 +12,11 @@ using Notaion.Context;
 namespace Notaion.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20241003062218_tableChatPrivate")]
+    partial class tableChatPrivate
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -268,9 +271,6 @@ namespace Notaion.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<bool>("Hide")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("IsNew")
                         .HasColumnType("bit");
 
                     b.Property<string>("Receiver")

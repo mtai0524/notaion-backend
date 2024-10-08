@@ -23,6 +23,13 @@ namespace Notaion.Hubs
             await Clients.All.SendAsync("ReceiveMessage", user, message);
         }
 
+        public async Task SendMessagePrivate(string sender, string reveiver, string message, string currentUsername, string friendUsername)
+        {
+            await Clients.All.SendAsync("ReceiveMessagePrivate", sender, reveiver, message, currentUsername, friendUsername);
+        }
+
+        //console
+
         public async Task SendMessageToGroup(string groupName, string user, string message)
         {
             await Clients.Group(groupName).SendAsync("ReceiveMessage", user, message);
