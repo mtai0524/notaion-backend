@@ -67,11 +67,13 @@ namespace Notaion.Controllers
         [HttpPost("add-chat-private")]
         public async Task<IActionResult> AddChat([FromBody] ChatPrivateViewModel chatViewModel)
         {
+            var vietnamTimeZone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
+            var vietnamTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, vietnamTimeZone);
             var chatPrivate = new ChatPrivate
             {
                 Id = Guid.NewGuid().ToString(),
                 Content = chatViewModel.Content,
-                SentDate = DateTime.UtcNow,
+                SentDate = vietnamTime,
                 Sender = chatViewModel.SenderId,
                 Receiver = chatViewModel.ReceiverId,
                 Hide = false,

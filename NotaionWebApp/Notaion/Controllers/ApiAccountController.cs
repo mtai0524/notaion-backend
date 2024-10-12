@@ -34,7 +34,7 @@ namespace WebAPI.Controllers
 
         }
 
-        [HttpGet("get-users-demo-jenkins-cicd-monster-asp")]
+        [HttpGet("get-users-demo-jenkins-cicd-ngrox-8080")]
         public async Task<IActionResult> GetAllUser()
         {
             var user = await _context.User.
