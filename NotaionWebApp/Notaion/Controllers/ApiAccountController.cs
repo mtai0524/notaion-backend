@@ -34,7 +34,7 @@ namespace WebAPI.Controllers
 
         }
 
-        [HttpGet("get-users-demo-jenkins-cicd-ngrox-8080-test2")]
+        [HttpGet("get-users-demo-jenkins-ngrok-github-webhook-hehe")]
         public async Task<IActionResult> GetAllUser()
         {
             var user = await _context.User.
