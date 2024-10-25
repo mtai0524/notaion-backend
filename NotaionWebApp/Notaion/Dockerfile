@@ -5,20 +5,20 @@ WORKDIR /app
 EXPOSE 80
 EXPOSE 443
 
+
+# Build stage
 FROM mcr.microsoft.com/dotnet/sdk:7.0 AS build
-ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
-COPY ["Notaion/Notaion.csproj", "Notaion/"]
-RUN dotnet restore "./Notaion/./Notaion.csproj"
 COPY . .
-WORKDIR "/src/Notaion"
-RUN dotnet build "./Notaion.csproj" -c $BUILD_CONFIGURATION -o /app/build
+RUN dotnet restore "Notaion.csproj"
+RUN dotnet build "Notaion.csproj" -c Release -o /app/build
 
+# Publish stage
 FROM build AS publish
-ARG BUILD_CONFIGURATION=Release
-RUN dotnet publish "./Notaion.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
+RUN dotnet publish "Notaion.csproj" -c Release -o /app/publish
 
-FROM base AS final
+# Final stage
+FROM mcr.microsoft.com/dotnet/aspnet:7.0
 WORKDIR /app
 COPY --from=publish /app/publish .
 ENTRYPOINT ["dotnet", "Notaion.dll"]

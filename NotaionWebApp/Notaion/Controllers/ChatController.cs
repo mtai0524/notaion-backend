@@ -9,6 +9,7 @@ using Notaion.Hubs;
 using System.Threading.Tasks;
 using System.Linq;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Notaion.Controllers
 {
@@ -24,7 +25,7 @@ namespace Notaion.Controllers
             _context = context;
             _hubContext = hubContext;
         }
-
+        [Authorize]
         [HttpGet("get-chats")]
         public IActionResult GetChats()
         {
