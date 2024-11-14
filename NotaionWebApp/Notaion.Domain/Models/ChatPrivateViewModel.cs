@@ -1,4 +1,5 @@
-﻿namespace Notaion.Models
+﻿namespace Notaion.Domain.Models
+
 {
     public class ChatPrivateViewModel
     {

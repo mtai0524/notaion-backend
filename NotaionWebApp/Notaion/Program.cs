@@ -10,6 +10,7 @@ using Microsoft.Identity.Web;
 using Microsoft.IdentityModel.Tokens;
 using Notaion.Configurations;
 using Notaion.Context;
+using Notaion.Domain.Models;
 using Notaion.Hubs;
 using Notaion.Models;
 using Notaion.Repositories;

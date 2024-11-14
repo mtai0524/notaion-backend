@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Identity;
 
-namespace Notaion.Models
+namespace Notaion.Domain.Models
 {
     public class User : IdentityUser
     {

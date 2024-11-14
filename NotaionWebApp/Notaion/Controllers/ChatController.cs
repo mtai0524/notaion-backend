@@ -10,6 +10,8 @@ using System.Threading.Tasks;
 using System.Linq;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
+using Notaion.Domain.Models;
+using Notaion.Domain.Entities;
 
 namespace Notaion.Controllers
 {

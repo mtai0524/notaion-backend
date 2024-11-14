@@ -256,7 +256,7 @@ namespace Notaion.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Chat");
+                    b.ToTable("Chat", (string)null);
                 });
 
             modelBuilder.Entity("Notaion.Entities.ChatPrivate", b =>
@@ -289,7 +289,7 @@ namespace Notaion.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("ChatPrivate");
+                    b.ToTable("ChatPrivate", (string)null);
                 });
 
             modelBuilder.Entity("Notaion.Entities.FriendShip", b =>
@@ -318,7 +318,7 @@ namespace Notaion.Migrations
 
                     b.HasIndex("SenderId");
 
-                    b.ToTable("FriendShip");
+                    b.ToTable("FriendShip", (string)null);
                 });
 
             modelBuilder.Entity("Notaion.Entities.Item", b =>
@@ -340,7 +340,7 @@ namespace Notaion.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Items");
+                    b.ToTable("Items", (string)null);
                 });
 
             modelBuilder.Entity("Notaion.Entities.Notification", b =>
@@ -375,7 +375,7 @@ namespace Notaion.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Notification");
+                    b.ToTable("Notification", (string)null);
                 });
 
             modelBuilder.Entity("Notaion.Entities.Page", b =>
@@ -405,7 +405,7 @@ namespace Notaion.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Page");
+                    b.ToTable("Page", (string)null);
                 });
 
             modelBuilder.Entity("Notaion.Models.User", b =>

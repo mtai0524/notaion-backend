@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Notaion.Context;
+using Notaion.Domain.Entities;
+using Notaion.Domain.Models;
 using Notaion.Entities;
 using Notaion.Models;
 

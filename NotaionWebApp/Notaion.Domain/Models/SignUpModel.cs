@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace Notaion.Models
+namespace Notaion.Domain.Models
 {
     public class SignUpModel
     {

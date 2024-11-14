@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Identity;
+using Notaion.Domain.Models;
 using Notaion.Models;
 
 namespace Notaion.Repositories
