@@ -5,15 +5,15 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-using Notaion.Context;
+using Notaion.Infrastructure.Context;
 
 #nullable disable
 
 namespace Notaion.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20240914015434_NotificationTable")]
-    partial class NotificationTable
+    [Migration("20240920102554_fkFriendShip")]
+    partial class fkFriendShip
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -262,6 +262,35 @@ namespace Notaion.Migrations
                     b.ToTable("Chat");
                 });
 
+            modelBuilder.Entity("Notaion.Entities.FriendShip", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime?>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ReceiverId")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("SenderId")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("Status")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ReceiverId");
+
+                    b.HasIndex("SenderId");
+
+                    b.ToTable("FriendShip");
+                });
+
             modelBuilder.Entity("Notaion.Entities.Item", b =>
                 {
                     b.Property<string>("Id")
@@ -293,10 +322,16 @@ namespace Notaion.Migrations
                     b.Property<string>("Content")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<bool>("IsRead")
+                        .HasColumnType("bit");
+
                     b.Property<string>("ReceiverId")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("ReceiverName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("SenderAvatar")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("SenderId")
@@ -411,6 +446,21 @@ namespace Notaion.Migrations
                         .HasForeignKey("UserId");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Notaion.Entities.FriendShip", b =>
+                {
+                    b.HasOne("Notaion.Models.User", "ReceiverUser")
+                        .WithMany()
+                        .HasForeignKey("ReceiverId");
+
+                    b.HasOne("Notaion.Models.User", "SenderUser")
+                        .WithMany()
+                        .HasForeignKey("SenderId");
+
+                    b.Navigation("ReceiverUser");
+
+                    b.Navigation("SenderUser");
                 });
 
             modelBuilder.Entity("Notaion.Entities.Page", b =>

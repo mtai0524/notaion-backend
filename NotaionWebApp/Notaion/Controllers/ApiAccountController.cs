@@ -7,12 +7,12 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Notaion.Repositories;
 using Notaion.Models;
-using Notaion.Context;
+using Notaion.Infrastructure.Context;
 using Microsoft.AspNetCore.Http.HttpResults;
 using System.Net;
 using Microsoft.AspNetCore.SignalR;
 using Notaion.Hubs;
-using Notaion.Entities;
+using Notaion.Domain.Entities;
 using Notaion.Domain.Models;
 
 namespace WebAPI.Controllers

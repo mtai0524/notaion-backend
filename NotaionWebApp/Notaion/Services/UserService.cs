@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Notaion.Context;
+using Notaion.Infrastructure.Context;
 using Notaion.Domain.Models;
 using Notaion.Models;
 

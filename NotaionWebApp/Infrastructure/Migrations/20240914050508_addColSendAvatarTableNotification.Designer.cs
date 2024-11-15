@@ -5,15 +5,15 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-using Notaion.Context;
+using Notaion.Infrastructure.Context;
 
 #nullable disable
 
 namespace Notaion.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20240915063024_addColIsRead")]
-    partial class addColIsRead
+    [Migration("20240914050508_addColSendAvatarTableNotification")]
+    partial class addColSendAvatarTableNotification
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -292,9 +292,6 @@ namespace Notaion.Migrations
 
                     b.Property<string>("Content")
                         .HasColumnType("nvarchar(max)");
-
-                    b.Property<bool>("IsRead")
-                        .HasColumnType("bit");
 
                     b.Property<string>("ReceiverId")
                         .HasColumnType("nvarchar(max)");

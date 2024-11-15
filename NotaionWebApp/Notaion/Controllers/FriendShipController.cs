@@ -2,10 +2,9 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Notaion.Context;
-using Notaion.Domain.Entities;
+using Notaion.Infrastructure.Context;
 using Notaion.Domain.Models;
-using Notaion.Entities;
+using Notaion.Domain.Entities;
 using Notaion.Models;
 
 namespace Notaion.Controllers

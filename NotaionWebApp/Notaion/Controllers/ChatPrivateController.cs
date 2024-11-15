@@ -2,15 +2,14 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
-using Notaion.Context;
+using Notaion.Infrastructure.Context;
 using Notaion.Domain.Entities;
 using Notaion.Domain.Models;
-using Notaion.Entities;
 using Notaion.Hubs;
 using Notaion.Models;
 using System.Security.Claims;
 
-namespace Notaion.Controllers
+namespace Notaion.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]

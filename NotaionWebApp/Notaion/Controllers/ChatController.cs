@@ -1,8 +1,8 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
-using Notaion.Context;
-using Notaion.Entities;
+using Notaion.Infrastructure.Context;
+using Notaion.Domain.Entities;
 using Notaion.Models;
 using Notaion.Services;
 using Notaion.Hubs;
@@ -11,7 +11,6 @@ using System.Linq;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
 using Notaion.Domain.Models;
-using Notaion.Domain.Entities;
 
 namespace Notaion.Controllers
 {
@@ -83,7 +82,7 @@ namespace Notaion.Controllers
 
             var chat = new Chat
             {
-                Id = Guid.NewGuid().ToString(),
+                Id = Guid.NewGuid(),
                 Content = chatViewModel.Content,
                 SentDate = vietnamTime,
                 UserId = chatViewModel.UserId ?? "anonymous",

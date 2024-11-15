@@ -5,15 +5,15 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-using Notaion.Context;
+using Notaion.Infrastructure.Context;
 
 #nullable disable
 
 namespace Notaion.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20240914050508_addColSendAvatarTableNotification")]
-    partial class addColSendAvatarTableNotification
+    [Migration("20241003062218_tableChatPrivate")]
+    partial class tableChatPrivate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -262,6 +262,65 @@ namespace Notaion.Migrations
                     b.ToTable("Chat");
                 });
 
+            modelBuilder.Entity("Notaion.Entities.ChatPrivate", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("Content")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("Hide")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Receiver")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Sender")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("SentDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UserId")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("ChatPrivate");
+                });
+
+            modelBuilder.Entity("Notaion.Entities.FriendShip", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime?>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ReceiverId")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("SenderId")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("Status")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ReceiverId");
+
+                    b.HasIndex("SenderId");
+
+                    b.ToTable("FriendShip");
+                });
+
             modelBuilder.Entity("Notaion.Entities.Item", b =>
                 {
                     b.Property<string>("Id")
@@ -292,6 +351,9 @@ namespace Notaion.Migrations
 
                     b.Property<string>("Content")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsRead")
+                        .HasColumnType("bit");
 
                     b.Property<string>("ReceiverId")
                         .HasColumnType("nvarchar(max)");
@@ -414,6 +476,30 @@ namespace Notaion.Migrations
                         .HasForeignKey("UserId");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Notaion.Entities.ChatPrivate", b =>
+                {
+                    b.HasOne("Notaion.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Notaion.Entities.FriendShip", b =>
+                {
+                    b.HasOne("Notaion.Models.User", "ReceiverUser")
+                        .WithMany()
+                        .HasForeignKey("ReceiverId");
+
+                    b.HasOne("Notaion.Models.User", "SenderUser")
+                        .WithMany()
+                        .HasForeignKey("SenderId");
+
+                    b.Navigation("ReceiverUser");
+
+                    b.Navigation("SenderUser");
                 });
 
             modelBuilder.Entity("Notaion.Entities.Page", b =>

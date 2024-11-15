@@ -1,7 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace Notaion.Entities
+namespace Notaion.Domain.Entities
 {
     [Table("Notification")]
     public class Notification
