@@ -30,8 +30,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Infrastructure\Notaion.Infrastructure.csproj" />
     <ProjectReference Include="..\Notaion.Application\Notaion.Application.csproj" />
+    <ProjectReference Include="..\Notaion.Infrastructure\Notaion.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>
