@@ -27,7 +27,7 @@ namespace Notaion.Controllers
             _context = context;
             _hubContext = hubContext;
         }
-        [Authorize]
+        //[Authorize]
         [HttpGet("get-chats")]
         public IActionResult GetChats()
         {
