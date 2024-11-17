@@ -6,8 +6,8 @@ using System.Security.Claims;
 using System.Text;
 using CloudinaryDotNet;
 using CloudinaryDotNet.Actions;
-using Notaion.Services;
 using Notaion.Domain.Models;
+using Notaion.Domain.Entities;
 
 namespace Notaion.Repositories
 {
@@ -16,7 +16,6 @@ namespace Notaion.Repositories
         private readonly UserManager<User> userManager;
         private readonly SignInManager<User> signInManager;
         private readonly IConfiguration configuration;
-
 
         public AccountRepository(UserManager<User> userManager, SignInManager<User> signInManager, IConfiguration configuration)
         {

@@ -4,13 +4,15 @@ using Microsoft.AspNetCore.SignalR;
 using Notaion.Infrastructure.Context;
 using Notaion.Domain.Entities;
 using Notaion.Models;
-using Notaion.Services;
 using Notaion.Hubs;
 using System.Threading.Tasks;
 using System.Linq;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
 using Notaion.Domain.Models;
+using AutoMapper;
+using Notaion.Application.DTOs;
+using Notaion.Application.Repositories;
 
 namespace Notaion.Controllers
 {
@@ -20,49 +22,25 @@ namespace Notaion.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly IHubContext<ChatHub> _hubContext;
+        private readonly IChatRepository chatRepository;
 
-        public ChatController(ApplicationDbContext context, IHubContext<ChatHub> hubContext)
+        public ChatController(ApplicationDbContext context, IHubContext<ChatHub> hubContext, IChatRepository chatRepository)
         {
             _context = context;
             _hubContext = hubContext;
+            this.chatRepository = chatRepository;
         }
         //[Authorize]
         [HttpGet("get-chats")]
         public IActionResult GetChats()
         {
-            var chats = _context.Chat
-                .Select(c => new
-                {
-                    c.Id,
-                    c.Content,
-                    c.SentDate,
-                    UserName = c.User.UserName,
-                    c.Hide
-                })
-                .OrderBy(c => c.SentDate)
-                .Where(x => x.Hide == false)
-                .ToList();
-
-            return Ok(chats);
+            return Ok(this.chatRepository.GetChats());
         }
 
         [HttpGet("get-chats-hidden")]
         public IActionResult GetChatsHidden()
         {
-            var chats = _context.Chat
-                .Select(c => new
-                {
-                    c.Id,
-                    c.Content,
-                    c.SentDate,
-                    UserName = c.User.UserName,
-                    c.Hide
-                })
-                .OrderBy(c => c.SentDate)
-                .Where(x => x.Hide == true)
-                .ToList();
-
-            return Ok(chats);
+            return Ok(this.chatRepository.GetChatsHide());
         }
 
         [HttpPost("add-chat")]

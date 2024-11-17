@@ -3,10 +3,9 @@ using CloudinaryDotNet;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using Notaion.Configurations;
 using Notaion.Infrastructure.Context;
-using Notaion.Services;
 using Notaion.Domain.Entities;
+using Notaion.Application.Common.Interfaces;
 
 namespace Notaion.API.Controllers
 {

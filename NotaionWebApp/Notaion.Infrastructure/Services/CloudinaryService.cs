@@ -1,26 +1,30 @@
 ﻿using CloudinaryDotNet;
 using CloudinaryDotNet.Actions;
-using Microsoft.AspNetCore.Components.Forms;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
-using Notaion.Configurations;
-using System.IO;
+using Notaion.Application.Common.Interfaces;
+using Notaion.Infrastructure.Options;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 
-namespace Notaion.Services
+namespace Notaion.Infrastructure.Services
 {
-    public interface ICloudinaryService
-    {
-        Task<string> UploadImageAsync(IFormFile imageFile);
-    }
-
     public class CloudinaryService : ICloudinaryService
     {
         private readonly Cloudinary _cloudinary;
 
-        public CloudinaryService(Cloudinary cloudinary)
+        public CloudinaryService(IOptions<CloudinaryOptions> options)
         {
-            _cloudinary = cloudinary;
+            var account = new Account(
+                options.Value.CloudName,
+                options.Value.ApiKey,
+                options.Value.ApiSecret
+            );
+            _cloudinary = new Cloudinary(account);
         }
 
         [RequestSizeLimit(1024 * 1024 * 100)]
@@ -44,7 +48,7 @@ namespace Notaion.Services
 
                     if (uploadResult.StatusCode == System.Net.HttpStatusCode.OK)
                     {
-                        return uploadResult.SecureUri.AbsoluteUri;
+                        return uploadResult.SecureUrl.AbsoluteUri;
                     }
                     else
                     {
