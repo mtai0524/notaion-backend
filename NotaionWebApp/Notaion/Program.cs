@@ -8,25 +8,26 @@ using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Identity.Web;
 using Microsoft.IdentityModel.Tokens;
-using Notaion.Configurations;
 using Notaion.Infrastructure.Context;
 using Notaion.Domain.Models;
 using Notaion.Hubs;
 using Notaion.Models;
 using Notaion.Repositories;
-using Notaion.Services;
 using System.Text;
+using Notaion.Application;
+using Notaion.Infrastructure;
+using Notaion.Application.Mapper;
+using Notaion.Infrastructure.Options;
+using Notaion.Domain.Entities;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+// clean architecture
+builder.Services.AddApplication();
+builder.Services.AddInfrastructure(builder.Configuration);
 
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-{
-    options.UseSqlServer(connectionString);
-    options.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking); // fix lỗi lúc không chọn ảnh, chỉ update thong tin khác
-}, ServiceLifetime.Singleton, ServiceLifetime.Transient);
-
+// mapper
+builder.Services.AddAutoMapper(typeof(ChatProfile));
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -43,20 +44,10 @@ builder.Services.AddCors(options =>
                 .AllowCredentials());
 });
 
-//// Cấu hình tài khoản Cloudinary
-var configuration = builder.Configuration;
-
-var cloudName = configuration["Cloudinary:CloudName"];
-var apiKey = configuration["Cloudinary:ApiKey"];
-var apiSecret = configuration["Cloudinary:ApiSecret"];
-
-var cloudinaryAccount = new Account(cloudName, apiKey, apiSecret);
-var cloudinary = new Cloudinary(cloudinaryAccount);
+// cloud
+builder.Services.Configure<CloudinaryOptions>(builder.Configuration.GetSection("Cloudinary"));
 
 // Services inject
-builder.Services.AddScoped<UserService>();
-builder.Services.AddSingleton(cloudinary);
-builder.Services.AddSingleton<ICloudinaryService, CloudinaryService>();
 builder.Services.AddScoped<IAccountRepository, AccountRepository>();
 builder.Services.AddTransient<ApplicationDbContext>();
 
@@ -65,6 +56,7 @@ builder.Services.AddDefaultIdentity<User>(options => options.SignIn.RequireConfi
     .AddDefaultTokenProviders();
 builder.Services.AddHttpClient();
 builder.Services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
+
 // Session
 builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSession();

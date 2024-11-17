@@ -1,7 +1,6 @@
 ﻿using Microsoft.AspNetCore.SignalR;
 using Microsoft.CodeAnalysis.Elfie.Serialization;
 using Notaion.Models;
-using Notaion.Services;
 using System.Collections.Concurrent;
 using System.Security.Claims;
 
@@ -50,12 +49,6 @@ namespace Notaion.Hubs
         {
             await Groups.AddToGroupAsync(Context.ConnectionId, groupName);
             await Clients.Group(groupName).SendAsync("ReceiveMessage", "System", $"{Context.ConnectionId} has created and joined the group {groupName}.");
-        }
-        private readonly UserService _userService;
-
-        public ChatHub(UserService userService)
-        {
-            _userService = userService;
         }
 
 
