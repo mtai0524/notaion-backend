@@ -12,7 +12,7 @@ using Microsoft.AspNetCore.Authorization;
 using Notaion.Domain.Models;
 using AutoMapper;
 using Notaion.Application.DTOs;
-using Notaion.Application.Repositories;
+using Notaion.Application.Interfaces;
 
 namespace Notaion.Controllers
 {
@@ -22,25 +22,25 @@ namespace Notaion.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly IHubContext<ChatHub> _hubContext;
-        private readonly IChatRepository chatRepository;
+        private readonly IChatService chatService;
 
-        public ChatController(ApplicationDbContext context, IHubContext<ChatHub> hubContext, IChatRepository chatRepository)
+        public ChatController(ApplicationDbContext context, IHubContext<ChatHub> hubContext, IChatService chatService)
         {
             _context = context;
             _hubContext = hubContext;
-            this.chatRepository = chatRepository;
+            this.chatService = chatService;
         }
         //[Authorize]
         [HttpGet("get-chats")]
-        public IActionResult GetChats()
+        public async Task<IActionResult> GetChats()
         {
-            return Ok(this.chatRepository.GetChats());
+            return Ok(await this.chatService.GetChatsAsync());
         }
 
         [HttpGet("get-chats-hidden")]
-        public IActionResult GetChatsHidden()
+        public async Task<IActionResult> GetChatsHidden()
         {
-            return Ok(this.chatRepository.GetChatsHide());
+            return Ok(await this.chatService.GetChatsHiddenAsync());
         }
 
         [HttpPost("add-chat")]

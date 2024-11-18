@@ -7,11 +7,12 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Notaion.Application.Repositories
+namespace Notaion.Domain.Interfaces
 {
     public interface IAccountRepository
     {
         public Task<IdentityResult> SignUpAsync(SignUpModel model);
         public Task<string> SignInAsync(SignInModel model);
+        Task<IEnumerable<object>> GetAllUsersAsync();
     }
 }

@@ -13,7 +13,7 @@ using Microsoft.AspNetCore.SignalR;
 using Notaion.Hubs;
 using Notaion.Domain.Entities;
 using Notaion.Domain.Models;
-using Notaion.Application.Repositories;
+using Notaion.Domain.Interfaces;
 
 namespace WebAPI.Controllers
 {

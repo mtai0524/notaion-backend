@@ -1,9 +1,14 @@
-﻿using Microsoft.AspNetCore.Identity;
+﻿using AutoMapper;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
-using Notaion.Application.Repositories;
+using Notaion.Application.DTOs.Chats;
+using Notaion.Application.DTOs.Users;
 using Notaion.Domain.Entities;
+using Notaion.Domain.Interfaces;
 using Notaion.Domain.Models;
+using Notaion.Infrastructure.Context;
 using Notaion.Models;
 using System;
 using System.Collections.Generic;
@@ -20,12 +25,22 @@ namespace Notaion.Infrastructure.Persistence
         private readonly UserManager<User> userManager;
         private readonly SignInManager<User> signInManager;
         private readonly IConfiguration configuration;
+        private readonly ApplicationDbContext _context;
+        private readonly IMapper _mapper;
 
-        public AccountRepository(UserManager<User> userManager, SignInManager<User> signInManager, IConfiguration configuration)
+        public AccountRepository(UserManager<User> userManager, SignInManager<User> signInManager, IConfiguration configuration, ApplicationDbContext context, IMapper mapper)
         {
             this.userManager = userManager;
             this.signInManager = signInManager;
             this.configuration = configuration;
+            _context = context;
+            _mapper = mapper;
+        }
+
+        public async Task<IEnumerable<object>> GetAllUsersAsync()
+        {
+            return await _context.User
+                 .Select(p => this._mapper.Map<UserResponseDto>(p)).ToListAsync();
         }
 
         public async Task<string> SignInAsync(SignInModel model) // đăng nhập

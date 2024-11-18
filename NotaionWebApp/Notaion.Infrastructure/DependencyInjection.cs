@@ -2,7 +2,9 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Notaion.Application.Common.Interfaces;
-using Notaion.Application.Repositories;
+using Notaion.Application.Interfaces;
+using Notaion.Application.Services;
+using Notaion.Domain.Interfaces;
 using Notaion.Infrastructure.Context;
 using Notaion.Infrastructure.Persistence;
 using Notaion.Infrastructure.Services;
@@ -26,9 +28,14 @@ namespace Notaion.Infrastructure
                 options.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking); 
             }, ServiceLifetime.Singleton, ServiceLifetime.Transient);
 
+            // chat
             services.AddScoped<IChatRepository, ChatRepository>();
-            services.AddScoped<ICloudinaryService, CloudinaryService>();
+            services.AddScoped<IChatService, ChatService>();
+
+            // account user
             services.AddScoped<IAccountRepository, AccountRepository>();
+
+            services.AddScoped<ICloudinaryService, CloudinaryService>();
 
             return services;
         }

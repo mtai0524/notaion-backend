@@ -1,7 +1,8 @@
 ﻿using AutoMapper;
-using Notaion.Application.DTOs;
-using Notaion.Application.Repositories;
+using Microsoft.EntityFrameworkCore;
+using Notaion.Application.DTOs.Chats;
 using Notaion.Domain.Entities;
+using Notaion.Domain.Interfaces;
 using Notaion.Infrastructure.Context;
 using System;
 using System.Collections.Generic;
@@ -20,22 +21,22 @@ namespace Notaion.Infrastructure.Persistence
             _context = context;
             _mapper = mapper;
         }
-        public List<GetChatRequest> GetChats()
+
+        public async Task<List<Chat>> GetChatsHiddenAsync()
         {
-            return this._context.Chat
-                .OrderBy(c => c.SentDate)
-                .Where(x => x.Hide == false)
-                .ToList()
-                .Select(p => this._mapper.Map<GetChatRequest>(p)).ToList();
+            return _mapper.Map<List<Chat>>(await _context.Chat
+              .Where(c => c.Hide == true)
+              .OrderBy(c => c.SentDate)
+              .ToListAsync());
         }
 
-        public List<GetChatRequest> GetChatsHide()
+        async Task<List<Chat>> IChatRepository.GetChatsAsync()
         {
-            return this._context.Chat
+            return _mapper.Map<List<Chat>>(await _context.Chat
+              .Where(c => c.Hide == false)
               .OrderBy(c => c.SentDate)
-              .Where(x => x.Hide == true)
-              .ToList()
-              .Select(p => this._mapper.Map<GetChatRequest>(p)).ToList();
+              .ToListAsync());
         }
+
     }
 }

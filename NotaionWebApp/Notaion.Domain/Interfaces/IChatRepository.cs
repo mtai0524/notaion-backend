@@ -1,15 +1,15 @@
-﻿using Notaion.Application.DTOs;
+﻿using Notaion.Domain.Entities;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Notaion.Application.Repositories
+namespace Notaion.Domain.Interfaces
 {
     public interface IChatRepository
     {
-        List<GetChatRequest> GetChats();
-        List<GetChatRequest> GetChatsHide();
+        Task<List<Chat>> GetChatsAsync();
+        Task<List<Chat>> GetChatsHiddenAsync();
     }
 }

@@ -15,7 +15,6 @@ using Notaion.Models;
 using System.Text;
 using Notaion.Application;
 using Notaion.Infrastructure;
-using Notaion.Application.Mapper;
 using Notaion.Infrastructure.Options;
 using Notaion.Domain.Entities;
 
@@ -24,9 +23,6 @@ var builder = WebApplication.CreateBuilder(args);
 // clean architecture
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
-
-// mapper
-builder.Services.AddAutoMapper(typeof(ChatProfile));
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -54,8 +50,6 @@ builder.Services.AddCors(options =>
 builder.Services.Configure<CloudinaryOptions>(builder.Configuration.GetSection("Cloudinary"));
 
 // Services inject
-builder.Services.AddTransient<ApplicationDbContext>();
-
 builder.Services.AddDefaultIdentity<User>(options => options.SignIn.RequireConfirmedAccount = false)
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddDefaultTokenProviders();
@@ -137,8 +131,8 @@ var app = builder.Build();
 
 //if (app.Environment.IsDevelopment())
 //{
-app.UseSwagger();
-app.UseSwaggerUI();
+    app.UseSwagger();
+    app.UseSwaggerUI();
 //}
 app.MapHub<ChatHub>("/chatHub");
 

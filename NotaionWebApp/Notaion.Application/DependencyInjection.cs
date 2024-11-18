@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using Notaion.Application.Mappings;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,6 +14,10 @@ namespace Notaion.Application
         public static IServiceCollection AddApplication(this IServiceCollection services)
         {
             services.AddAutoMapper(Assembly.GetExecutingAssembly());
+
+            services.AddAutoMapper(typeof(ChatMappingProfile));
+            services.AddAutoMapper(typeof(UserMappingProfile));
+
             return services;
         }
     }
