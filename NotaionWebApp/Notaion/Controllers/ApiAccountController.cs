@@ -5,7 +5,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Notaion.Repositories;
 using Notaion.Models;
 using Notaion.Infrastructure.Context;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -14,6 +13,7 @@ using Microsoft.AspNetCore.SignalR;
 using Notaion.Hubs;
 using Notaion.Domain.Entities;
 using Notaion.Domain.Models;
+using Notaion.Application.Repositories;
 
 namespace WebAPI.Controllers
 {

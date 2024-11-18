@@ -1,15 +1,19 @@
 ﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
+using Notaion.Application.Repositories;
+using Notaion.Domain.Entities;
+using Notaion.Domain.Models;
 using Notaion.Models;
+using System;
+using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
+using System.Linq;
 using System.Security.Claims;
 using System.Text;
-using CloudinaryDotNet;
-using CloudinaryDotNet.Actions;
-using Notaion.Domain.Models;
-using Notaion.Domain.Entities;
+using System.Threading.Tasks;
 
-namespace Notaion.Repositories
+namespace Notaion.Infrastructure.Persistence
 {
     public class AccountRepository : IAccountRepository
     {
@@ -59,7 +63,7 @@ namespace Notaion.Repositories
                 new Claim(ClaimTypes.Country, user.Avatar),
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
             };
-   
+
             var authenKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["JWT:Secret"]));
 
             var token = new JwtSecurityToken(

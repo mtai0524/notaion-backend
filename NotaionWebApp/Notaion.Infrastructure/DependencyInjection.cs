@@ -28,6 +28,8 @@ namespace Notaion.Infrastructure
 
             services.AddScoped<IChatRepository, ChatRepository>();
             services.AddScoped<ICloudinaryService, CloudinaryService>();
+            services.AddScoped<IAccountRepository, AccountRepository>();
+
             return services;
         }
     }

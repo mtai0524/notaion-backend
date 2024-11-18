@@ -12,7 +12,6 @@ using Notaion.Infrastructure.Context;
 using Notaion.Domain.Models;
 using Notaion.Hubs;
 using Notaion.Models;
-using Notaion.Repositories;
 using System.Text;
 using Notaion.Application;
 using Notaion.Infrastructure;
@@ -34,6 +33,13 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddSignalR();
 
+builder.Configuration
+    .SetBasePath(Directory.GetCurrentDirectory())
+    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+    .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: true)
+    .AddEnvironmentVariables();
+
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAllOrigins",
@@ -48,7 +54,6 @@ builder.Services.AddCors(options =>
 builder.Services.Configure<CloudinaryOptions>(builder.Configuration.GetSection("Cloudinary"));
 
 // Services inject
-builder.Services.AddScoped<IAccountRepository, AccountRepository>();
 builder.Services.AddTransient<ApplicationDbContext>();
 
 builder.Services.AddDefaultIdentity<User>(options => options.SignIn.RequireConfirmedAccount = false)
