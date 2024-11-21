@@ -7,9 +7,7 @@ using System.Threading.Tasks;
 
 namespace Notaion.Domain.Interfaces
 {
-    public interface IChatRepository
+    public interface IChatRepository : IGenericRepository<Chat>
     {
-        Task<List<Chat>> GetChatsAsync();
-        Task<List<Chat>> GetChatsHiddenAsync();
     }
 }

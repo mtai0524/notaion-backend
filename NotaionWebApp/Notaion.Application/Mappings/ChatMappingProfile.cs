@@ -10,6 +10,8 @@ namespace Notaion.Application.Mappings
         {
             CreateMap<Chat, ChatResponseDto>()
                         .ForMember(dest => dest.IsHiden, opt => opt.MapFrom(src => src.Hide)); // config auto mapper - prefix
+
+            CreateMap<CreateChatDto, Chat>();
         }
     }
 }

@@ -2,11 +2,12 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Notaion.Application.Common.Interfaces;
-using Notaion.Application.Interfaces;
+using Notaion.Application.Interfaces.Services;
 using Notaion.Application.Services;
 using Notaion.Domain.Interfaces;
 using Notaion.Infrastructure.Context;
 using Notaion.Infrastructure.Persistence;
+using Notaion.Infrastructure.Repositories;
 using Notaion.Infrastructure.Services;
 using System;
 using System.Collections.Generic;
@@ -31,6 +32,9 @@ namespace Notaion.Infrastructure
             // chat
             services.AddScoped<IChatRepository, ChatRepository>();
             services.AddScoped<IChatService, ChatService>();
+
+            // generic repo
+            services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
 
             // account user
             services.AddScoped<IAccountRepository, AccountRepository>();

@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using Microsoft.EntityFrameworkCore;
+using Notaion.Application.Common.Helpers;
 using Notaion.Application.DTOs.Chats;
 using Notaion.Domain.Entities;
 using Notaion.Domain.Interfaces;
@@ -10,32 +11,16 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Notaion.Infrastructure.Persistence
+namespace Notaion.Infrastructure.Repositories
 {
-    public class ChatRepository : IChatRepository
+    public class ChatRepository : GenericRepository<Chat>, IChatRepository
     {
         private readonly ApplicationDbContext _context;
         private readonly IMapper _mapper;
-        public ChatRepository(ApplicationDbContext context, IMapper mapper)
+        public ChatRepository(ApplicationDbContext context, IMapper mapper) : base(context)
         {
             _context = context;
             _mapper = mapper;
-        }
-
-        public async Task<List<Chat>> GetChatsHiddenAsync()
-        {
-            return _mapper.Map<List<Chat>>(await _context.Chat
-              .Where(c => c.Hide == true)
-              .OrderBy(c => c.SentDate)
-              .ToListAsync());
-        }
-
-        async Task<List<Chat>> IChatRepository.GetChatsAsync()
-        {
-            return _mapper.Map<List<Chat>>(await _context.Chat
-              .Where(c => c.Hide == false)
-              .OrderBy(c => c.SentDate)
-              .ToListAsync());
         }
 
     }

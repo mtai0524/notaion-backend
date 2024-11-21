@@ -1,18 +1,15 @@
-﻿using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Notaion.Infrastructure.Context;
 using Notaion.Domain.Entities;
-using Notaion.Models;
 using Notaion.Hubs;
-using System.Threading.Tasks;
-using System.Linq;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.Authorization;
 using Notaion.Domain.Models;
+using Notaion.Application.DTOs.Chats;
+using Notaion.Application.Common.Helpers;
 using AutoMapper;
-using Notaion.Application.DTOs;
-using Notaion.Application.Interfaces;
+using Notaion.Application.Services;
+using Notaion.Application.Interfaces.Services;
 
 namespace Notaion.Controllers
 {
@@ -23,13 +20,20 @@ namespace Notaion.Controllers
         private readonly ApplicationDbContext _context;
         private readonly IHubContext<ChatHub> _hubContext;
         private readonly IChatService chatService;
-
         public ChatController(ApplicationDbContext context, IHubContext<ChatHub> hubContext, IChatService chatService)
         {
             _context = context;
             _hubContext = hubContext;
             this.chatService = chatService;
         }
+
+        [HttpGet("test-genaric-repo")]
+        public async Task<IActionResult> GetChatWithGenaricRepo()
+        {
+            var chats = await chatService.GetChatsAsync();
+            return Ok(chats);
+        }
+
         //[Authorize]
         [HttpGet("get-chats")]
         public async Task<IActionResult> GetChats()
@@ -44,35 +48,23 @@ namespace Notaion.Controllers
         }
 
         [HttpPost("add-chat")]
-        public async Task<IActionResult> AddChat([FromBody] ChatViewModel chatViewModel)
+        public async Task<IActionResult> AddChat([FromBody] CreateChatDto chatDto)
         {
-            if (chatViewModel == null || string.IsNullOrEmpty(chatViewModel.Content))
+            if (chatDto == null || string.IsNullOrEmpty(chatDto.Content))
             {
                 return BadRequest("Invalid chat message.");
             }
 
-            var vietnamTimeZone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
-            var vietnamTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, vietnamTimeZone);
-
-            var userName = !string.IsNullOrEmpty(chatViewModel.UserName)
-                ? chatViewModel.UserName
-                : "mèo con ẩn danh";
-
-            var chat = new Chat
+            try
             {
-                Id = Guid.NewGuid(),
-                Content = chatViewModel.Content,
-                SentDate = vietnamTime,
-                UserId = chatViewModel.UserId ?? "anonymous",
-                UserName = userName
-            };
+                var createdChat = await this.chatService.CreateChatAsync(chatDto);
 
-            _context.Chat.Add(chat);
-            await _context.SaveChangesAsync();
-       
-            await _hubContext.Clients.All.SendAsync("ReceiveMessage", userName, chat.Content);
-
-            return Ok(chat);
+                return Ok(createdChat);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
         }
 
         [HttpDelete("delete-all-chats")]
