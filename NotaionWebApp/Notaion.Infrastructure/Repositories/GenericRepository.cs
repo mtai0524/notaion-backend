@@ -5,6 +5,7 @@ using Notaion.Infrastructure.Context;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -25,17 +26,16 @@ namespace Notaion.Infrastructure.Repositories
             await _context.SaveChangesAsync();
             return entity;
         }
-        public async Task DeleteAsync(T entity)
-        {
-            _dbSet.Remove(entity);
-            await _context.SaveChangesAsync();
-        }
 
         public async Task<IEnumerable<T>> GetAllAsync() // _context.Chat.ToListAsync()
         {
             return await _dbSet.ToListAsync();
         }
 
+        public async Task<IEnumerable<T>> GetAsync(Expression<Func<T, bool>> predicate)
+        {
+            return await _dbSet.Where(predicate).ToListAsync();
+        }
 
         public async Task<T> GetByIdAsync(int id)
         {
@@ -46,7 +46,17 @@ namespace Notaion.Infrastructure.Repositories
         {
             _dbSet.Attach(entity);
             _context.Entry(entity).State = EntityState.Modified;
-            await _context.SaveChangesAsync();
+            await Task.CompletedTask;
+        }
+
+        public async Task UpdateRangeAsync(IEnumerable<T> entities)
+        {
+            _dbSet.AttachRange(entities);
+            foreach (var entity in entities)
+            {
+                _context.Entry(entity).State = EntityState.Modified;
+            }
+            await Task.CompletedTask;
         }
     }
 }

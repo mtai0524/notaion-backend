@@ -20,6 +20,5 @@ namespace Notaion.Infrastructure.Repositories
         {
             _context = context;
         }
-
     }
 }

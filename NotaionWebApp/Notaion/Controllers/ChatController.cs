@@ -10,6 +10,7 @@ using Notaion.Application.Common.Helpers;
 using AutoMapper;
 using Notaion.Application.Services;
 using Notaion.Application.Interfaces.Services;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Notaion.Controllers
 {
@@ -67,18 +68,19 @@ namespace Notaion.Controllers
             }
         }
 
+        [Authorize]
         [HttpDelete("delete-all-chats")]
         public async Task<IActionResult> DeleteAllChats()
         {
-            var listChats = await _context.Chat.ToListAsync();
-
-            foreach (var chat in listChats)
+            try
             {
-                chat.Hide = true;
+                var updateRecords = await chatService.HideChatAllAsync();
+                return Ok(new { Message = "All chats msg is hidden successfully", UpdateRecords = updateRecords });
             }
-            _context.UpdateRange(listChats);
-            await _context.SaveChangesAsync();
-            return Ok();
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { Message = "error when hide chats", Error = ex.Message });
+            }
         }
 
         [HttpDelete("delete-me-chats/{id}")]

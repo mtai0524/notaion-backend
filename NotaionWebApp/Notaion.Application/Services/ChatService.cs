@@ -44,6 +44,29 @@ namespace Notaion.Application.Services
             return response;
         }
 
+        public async Task<int> HideChatAllAsync()
+        {
+            await _unitOfWork.BeginTransactionAsync();
+            try
+            {
+                var listChat = await _unitOfWork.ChatRepository.GetAsync(x => x.Hide == false);
+                foreach (var chat in listChat)
+                {
+                    chat.Hide = true;
+                }
+
+                await _unitOfWork.ChatRepository.UpdateRangeAsync(listChat);
+                await _unitOfWork.SaveChangeAsync();
+                await _unitOfWork.CommitTransactionAsync();
+                return listChat.Count();
+            }
+            catch
+            {
+                await _unitOfWork.RollBackAsync();
+                throw;
+            }
+        }
+
         /*
          * uow generic call repo not pass entity
          */

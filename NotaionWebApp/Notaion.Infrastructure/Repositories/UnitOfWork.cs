@@ -21,6 +21,30 @@ namespace Notaion.Infrastructure.Repositories
             _repositories = new Dictionary<Type, object>();
             ChatRepository = new ChatRepository(_context);
         }
+
+        public IGenericRepository<T> GetGenericRepository<T>() where T : class
+        {
+            if (_repositories.ContainsKey(typeof(T)))
+            {
+                return _repositories[typeof(T)] as IGenericRepository<T>;
+            }
+            var repository = new GenericRepository<T>(_context);
+            _repositories.Add(typeof(T), repository);
+            return repository;
+        }
+
+        public Task<int> SaveChangeAsync()
+        {
+            return _context.SaveChangesAsync();
+        }
+
+        public async Task RollBackAsync()
+        {
+            await _transaction.RollbackAsync();
+            await _transaction.DisposeAsync();
+            _transaction = null!;
+        }
+
         public async Task BeginTransactionAsync()
         {
             _transaction = await _context.Database.BeginTransactionAsync();
@@ -31,7 +55,7 @@ namespace Notaion.Infrastructure.Repositories
             try
             {
                 await _transaction.CommitAsync();
-            } 
+            }
             catch
             {
                 await _transaction.RollbackAsync();
@@ -51,12 +75,9 @@ namespace Notaion.Infrastructure.Repositories
             GC.SuppressFinalize(this);
         }
         private bool dispose = false;
-
-     
-
         protected virtual void Dispose(bool disposing)
         {
-            if(!this.dispose)
+            if (!this.dispose)
             {
                 if (disposing)
                 {
@@ -64,29 +85,6 @@ namespace Notaion.Infrastructure.Repositories
                 }
                 this.dispose = true;
             }
-        }
-
-        public IGenericRepository<T> GetGenericRepository<T>() where T : class
-        {
-            if (_repositories.ContainsKey(typeof(T)))
-            {
-                return _repositories[typeof(T)] as IGenericRepository<T>;
-            }
-            var repository = new GenericRepository<T>(_context);
-            _repositories.Add(typeof(T), repository);
-            return repository;
-        }
-
-        public async Task RollBackAsync()
-        {
-            await _transaction.RollbackAsync();
-            await _transaction.DisposeAsync();
-            _transaction = null!;
-        }
-
-        public Task<int> SaveChangeAsync()
-        {
-            return _context.SaveChangesAsync();
         }
     }
 }

@@ -12,5 +12,6 @@ namespace Notaion.Application.Interfaces.Services
         Task<List<ChatResponseDto>> GetChatsAsync();
         Task<List<ChatResponseDto>> GetChatsHiddenAsync();
         Task<ChatResponseDto> CreateChatAsync(CreateChatDto chatDto);
+        Task<int> HideChatAllAsync();
     }
 }
