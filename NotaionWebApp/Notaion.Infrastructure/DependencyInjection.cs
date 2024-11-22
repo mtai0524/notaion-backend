@@ -36,6 +36,9 @@ namespace Notaion.Infrastructure
             // generic repo
             services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
 
+            // uow
+            services.AddScoped<IUnitOfWork, UnitOfWork>();
+
             // account user
             services.AddScoped<IAccountRepository, AccountRepository>();
 

@@ -31,7 +31,7 @@ namespace Notaion.Infrastructure.Repositories
             await _context.SaveChangesAsync();
         }
 
-        public async Task<IEnumerable<T>> GetAllAsync()
+        public async Task<IEnumerable<T>> GetAllAsync() // _context.Chat.ToListAsync()
         {
             return await _dbSet.ToListAsync();
         }

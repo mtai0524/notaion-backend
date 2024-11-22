@@ -18,11 +18,13 @@ namespace Notaion.Application.Services
         private readonly IGenericRepository<Chat> _chatGenericRepository; // need use unit of work , cuz dont use Chat entity in Application layer
         private readonly IChatRepository _chatRepository;
         private readonly IMapper _mapper;
-        public ChatService(IGenericRepository<Chat> chatGenericRepository, IMapper mapper, IChatRepository chatRepository)
+        private readonly IUnitOfWork _unitOfWork;
+        public ChatService(IUnitOfWork unitOfWork, IGenericRepository<Chat> chatGenericRepository, IMapper mapper, IChatRepository chatRepository)
         {
             _chatGenericRepository = chatGenericRepository;
             _mapper = mapper;
             _chatRepository = chatRepository;
+            _unitOfWork = unitOfWork;
         }
 
         public async Task<ChatResponseDto> CreateChatAsync(CreateChatDto chatDto)
@@ -41,11 +43,36 @@ namespace Notaion.Application.Services
 
             return response;
         }
+
+        /*
+         * uow generic call repo not pass entity
+         */
         public async Task<List<ChatResponseDto>> GetChatsAsync()
         {
-            var chats = await _chatRepository.GetAllAsync();
+            var chats = await _unitOfWork.ChatRepository.GetAllAsync();
             return _mapper.Map<List<ChatResponseDto>>(chats);
         }
+
+
+        /*
+         * uow generic param entity
+         */
+        //public async Task<List<ChatResponseDto>> GetChatsAsync()
+        //{
+        //    var chats = await _unitOfWork.GetGenericRepository<Chat>().GetAllAsync();
+        //    return _mapper.Map<List<ChatResponseDto>>(chats);
+        //}
+
+        
+        /*
+         * generic repo
+         */
+
+        //public async Task<List<ChatResponseDto>> GetChatsAsync()
+        //{
+        //    var chats = await _chatRepository.GetAllAsync();
+        //    return _mapper.Map<List<ChatResponseDto>>(chats);
+        //}
 
         public async Task<List<ChatResponseDto>> GetChatsHiddenAsync()
         {

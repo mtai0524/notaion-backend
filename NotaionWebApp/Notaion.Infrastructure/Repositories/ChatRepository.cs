@@ -16,11 +16,9 @@ namespace Notaion.Infrastructure.Repositories
     public class ChatRepository : GenericRepository<Chat>, IChatRepository
     {
         private readonly ApplicationDbContext _context;
-        private readonly IMapper _mapper;
-        public ChatRepository(ApplicationDbContext context, IMapper mapper) : base(context)
+        public ChatRepository(ApplicationDbContext context) : base(context)
         {
             _context = context;
-            _mapper = mapper;
         }
 
     }
