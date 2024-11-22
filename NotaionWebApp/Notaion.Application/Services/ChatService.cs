@@ -72,7 +72,7 @@ namespace Notaion.Application.Services
          */
         public async Task<List<ChatResponseDto>> GetChatsAsync()
         {
-            var chats = await _unitOfWork.ChatRepository.GetAllAsync();
+            var chats = await _unitOfWork.ChatRepository.GetAsync(x => x.Hide == false);
             return _mapper.Map<List<ChatResponseDto>>(chats);
         }
 

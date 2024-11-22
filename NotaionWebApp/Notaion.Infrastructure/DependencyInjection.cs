@@ -27,7 +27,7 @@ namespace Notaion.Infrastructure
             {
                 options.UseSqlServer(connectionString);
                 options.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking); 
-            }, ServiceLifetime.Singleton, ServiceLifetime.Transient);
+            }, ServiceLifetime.Scoped);
 
             // chat
             services.AddScoped<IChatRepository, ChatRepository>();

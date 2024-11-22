@@ -11,6 +11,7 @@ using AutoMapper;
 using Notaion.Application.Services;
 using Notaion.Application.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
+using System;
 
 namespace Notaion.Controllers
 {
@@ -28,12 +29,12 @@ namespace Notaion.Controllers
             this.chatService = chatService;
         }
 
-        [HttpGet("test-genaric-repo")]
-        public async Task<IActionResult> GetChatWithGenaricRepo()
-        {
-            var chats = await chatService.GetChatsAsync();
-            return Ok(chats);
-        }
+        //[HttpGet("test-genaric-repo")]
+        //public async Task<IActionResult> GetChatWithGenaricRepo()
+        //{
+        //    var chats = await chatService.GetChatsAsync();
+        //    return Ok(chats);
+        //}
 
         //[Authorize]
         [HttpGet("get-chats")]
@@ -59,6 +60,8 @@ namespace Notaion.Controllers
             try
             {
                 var createdChat = await this.chatService.CreateChatAsync(chatDto);
+
+                await _hubContext.Clients.All.SendAsync("ReceiveMessage", createdChat.UserName, createdChat.Content);
 
                 return Ok(createdChat);
             }
