@@ -1,16 +1,8 @@
-﻿using AutoMapper;
-using Microsoft.EntityFrameworkCore;
+﻿using Newtonsoft.Json;
 using Notaion.Application.Common.Helpers;
-using Notaion.Application.DTOs.Chats;
-using Notaion.Application.Services;
 using Notaion.Domain.Entities;
 using Notaion.Domain.Interfaces;
 using Notaion.Infrastructure.Context;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Notaion.Infrastructure.Repositories
 {
@@ -20,6 +12,7 @@ namespace Notaion.Infrastructure.Repositories
         public ChatRepository(ApplicationDbContext context) : base(context)
         {
             _context = context;
+            predefinedResponses = LoadResponsesAsync().GetAwaiter().GetResult();
         }
 
         public async Task<Chat> AddChatbotAsync(Chat chat)
@@ -40,57 +33,96 @@ namespace Notaion.Infrastructure.Repositories
             return botChat;
         }
 
+        private Dictionary<string, List<string>> predefinedResponses;
+        private async Task<Dictionary<string, List<string>>> LoadResponsesAsync()
+        {
+            // Xác định đường dẫn tuyệt đối đến file "responses.json" cùng thư mục với ChatRepository.cs
+            string filePath = Path.Combine(Directory.GetCurrentDirectory(), "responses.json");
+
+            if (File.Exists(filePath))
+            {
+                try
+                {
+                    var json = await File.ReadAllTextAsync(filePath); // Đọc file JSON bất đồng bộ
+                    predefinedResponses = JsonConvert.DeserializeObject<Dictionary<string, List<string>>>(json);
+
+                    return predefinedResponses ?? new Dictionary<string, List<string>>();
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Lỗi khi đọc file cấu hình: {ex.Message}");
+                    return new Dictionary<string, List<string>>();
+                }
+            }
+            else
+            {
+                Console.WriteLine("Không tìm thấy file cấu hình câu trả lời.");
+                return new Dictionary<string, List<string>>();
+            }
+        }
+
         public async Task<string> GetChatbotResponseAsync(string userMessage)
         {
-            var predefinedResponses = new Dictionary<string, string>
+            if (userMessage.StartsWith("/bot", StringComparison.OrdinalIgnoreCase))
             {
-                { "hello", "Chào bạn! Tôi là chatbot." },
-                { "xin chào", "Chào bạn! Tôi là chatbot." },
-                { "hi", "Chào bạn! Tôi là chatbot." },
-                { "how are you", "Tôi là chatbot, luôn sẵn sàng hỗ trợ bạn." },
-                { "how's it going", "Tôi là chatbot, luôn sẵn sàng hỗ trợ bạn." },
-                { "bye", "Tạm biệt! Hẹn gặp lại." },
-                { "goodbye", "Tạm biệt! Hẹn gặp lại." },
-                { "what is your name", "Tôi là một chatbot không có tên riêng." },
-                { "can you help me", "Tất nhiên! Bạn cần giúp đỡ về vấn đề gì?" },
-                { "how do I get to the nearest coffee shop", "Bạn có thể tìm thấy quán cà phê gần nhất bằng cách sử dụng Google Maps." },
-                { "tell me a joke", "Tại sao máy tính không bao giờ đói? Vì nó đã có đủ bộ nhớ!" },
-                { "what time is it", "Sorry, I can't provide the time information." },
-                { "what is the weather like", "I'm sorry, I can't provide current weather information." },
-                { "who are you", "Tôi là một chatbot được lập trình để hỗ trợ bạn." },
-                { "thank you", "You're welcome! I'm here to help!" },
-                { "sorry", "Không sao, bạn cần thêm sự trợ giúp nào không?" },
-                { "good morning", "Good morning! Have a great day ahead." },
-                { "good night", "Chúc bạn ngủ ngon! Hẹn gặp lại vào ngày mai." },
-                { "how old are you", "Tôi không có tuổi, tôi chỉ là một chương trình." },
-                { "what can you do", "I can help you with answering questions, sending messages, and much more." },
-                { "tell me a fact", "Did you know that the Earth rotates around the Sun at a speed of about 30 km/s?" },
-                { "are you real", "Tôi không phải là con người, nhưng tôi có thể giúp bạn rất nhiều điều." },
-                { "what is your favorite color", "Màu sắc yêu thích của tôi là màu xanh dương." },
-                { "info", "Xin chào tôi là chatbot do minhtai training, mục đích dùng để sau khi cậu chủ không còn nữa thì tôi vẫn có thể thay thế :>" },
-                { "help",
-                    "Dưới đây là một số lệnh mà bạn có thể sử dụng:\n" +
-                    "/shortcut - Hiển thị các phím tắt\n" +
-                    "/hello - Chào chatbot\n" +
-                    "/bye - Tạm biệt chatbot\n" +
-                    "/joke - Xem một câu chuyện vui\n" +
-                    "/fact - Nhận một thông tin thú vị" +
-                    "/info - Xem thông tin chatbot"
-                },
-              { "are you here", "Tôi vẫn luôn ở đây, mãi mãi không rời đi :>" },
-              { "bạn có đó không", "Tôi vẫn luôn ở đây, mãi mãi không rời đi :>" },
-              { "/shortcut", "alt + x : toggle drawer \n" + "alt + c : toggle chat box" },
+                userMessage = userMessage.Substring(5).Trim();
+            }
+            double similarityThreshold = 0.3;
 
-            };
+
+            string bestMatchKey = null;
+            double highestSimilarity = 0;
+
             foreach (var keyword in predefinedResponses.Keys)
             {
-                if (userMessage.Contains(keyword, StringComparison.OrdinalIgnoreCase))
+                int similarity = LevenshteinDistance(userMessage.ToLower(), keyword.ToLower());
+
+                double similarityRatio = 1.0 - (double)similarity / Math.Max(userMessage.Length, keyword.Length);
+
+                Console.WriteLine($"Similarity between '{userMessage}' and '{keyword}': {similarityRatio * 100}%");
+
+                if (similarityRatio >= similarityThreshold && similarityRatio > highestSimilarity)
                 {
-                    return predefinedResponses[keyword];
+                    highestSimilarity = similarityRatio;
+                    bestMatchKey = keyword;
                 }
+            }
+
+            if (bestMatchKey != null)
+            {
+                var responses = predefinedResponses[bestMatchKey];
+                var randomIndex = new Random().Next(responses.Count);
+                return responses[randomIndex];
             }
 
             return "Xin chào! Bạn cần giúp gì từ chatbot?";
         }
+
+        public static int LevenshteinDistance(string a, string b)
+        {
+            int lenA = a.Length;
+            int lenB = b.Length;
+            int[,] distance = new int[lenA + 1, lenB + 1];
+
+            // Khởi tạo mảng distance
+            for (int i = 0; i <= lenA; i++)
+                distance[i, 0] = i;
+            for (int j = 0; j <= lenB; j++)
+                distance[0, j] = j;
+
+            // Tính toán khoảng cách giữa hai chuỗi
+            for (int i = 1; i <= lenA; i++)
+            {
+                for (int j = 1; j <= lenB; j++)
+                {
+                    int cost = (a[i - 1] == b[j - 1]) ? 0 : 1;
+                    distance[i, j] = Math.Min(Math.Min(distance[i - 1, j] + 1, distance[i, j - 1] + 1), distance[i - 1, j - 1] + cost);
+                }
+            }
+
+            return distance[lenA, lenB];
+        }
+
+
     }
 }

@@ -1,0 +1,26 @@
+﻿{
+  "hello": [
+    "Chào bạn! Tôi là chatbot.",
+    "Xin chào! Chào mừng bạn đến với chatbot của tôi!"
+  ],
+  "hi": [
+    "Chào bạn!",
+    "Hi! Tôi là chatbot của bạn."
+  ],
+  "how are you": [
+    "Tôi là chatbot, luôn sẵn sàng hỗ trợ bạn.",
+    "Tôi vẫn ổn, cảm ơn bạn đã hỏi!"
+  ],
+  "bye": [
+    "Tạm biệt! Hẹn gặp lại.",
+    "Chào tạm biệt! Chúc bạn một ngày tốt lành!"
+  ],
+  "joke": [
+    "Tại sao máy tính không bao giờ đói? Vì nó đã có đủ bộ nhớ!",
+    "Tại sao lập trình viên thích café? Vì đó là nơi họ phát minh ra các giải pháp!"
+  ],
+  "shortcut": [
+    "alt + x: open drawer",
+    "alt + c: open chatbox"
+  ]
+}

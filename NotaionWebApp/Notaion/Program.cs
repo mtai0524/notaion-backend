@@ -1,22 +1,15 @@
-using CloudinaryDotNet;
-using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.ResponseCompression;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Identity.Web;
 using Microsoft.IdentityModel.Tokens;
-using Notaion.Infrastructure.Context;
-using Notaion.Domain.Models;
-using Notaion.Hubs;
-using Notaion.Models;
-using System.Text;
 using Notaion.Application;
-using Notaion.Infrastructure;
-using Notaion.Infrastructure.Options;
 using Notaion.Domain.Entities;
+using Notaion.Hubs;
+using Notaion.Infrastructure;
+using Notaion.Infrastructure.Context;
+using Notaion.Infrastructure.Options;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -132,8 +125,8 @@ var app = builder.Build();
 
 //if (app.Environment.IsDevelopment())
 //{
-    app.UseSwagger();
-    app.UseSwaggerUI();
+app.UseSwagger();
+app.UseSwaggerUI();
 //}
 app.MapHub<ChatHub>("/chatHub");
 
@@ -145,5 +138,7 @@ app.MapControllers();
 
 app.UseCors("AllowAllOrigins");
 app.UseSession();
+
+
 app.Run();
 
