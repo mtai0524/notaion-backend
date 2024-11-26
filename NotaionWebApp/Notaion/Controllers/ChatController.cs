@@ -1,18 +1,12 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
-using Notaion.Infrastructure.Context;
-using Notaion.Domain.Entities;
-using Notaion.Hubs;
 using Microsoft.EntityFrameworkCore;
-using Notaion.Domain.Models;
 using Notaion.Application.DTOs.Chats;
-using Notaion.Application.Common.Helpers;
-using AutoMapper;
-using Notaion.Application.Services;
 using Notaion.Application.Interfaces.Services;
-using Microsoft.AspNetCore.Authorization;
-using System;
-using Notaion.Domain.Interfaces;
+using Notaion.Hubs;
+using Notaion.Infrastructure.Context;
+using Notaion.Infrastructure.Repositories;
 
 namespace Notaion.Controllers
 {
@@ -23,11 +17,55 @@ namespace Notaion.Controllers
         private readonly ApplicationDbContext _context;
         private readonly IHubContext<ChatHub> _hubContext;
         private readonly IChatService chatService;
-        public ChatController(ApplicationDbContext context, IHubContext<ChatHub> hubContext, IChatService chatService)
+        private readonly ChatModelTrainer _chatModelTrainer;
+        public ChatController(ApplicationDbContext context, IHubContext<ChatHub> hubContext, IChatService chatService, ChatModelTrainer chatModelTrainer)
         {
             _context = context;
             this.chatService = chatService;
             _hubContext = hubContext;
+            _chatModelTrainer = chatModelTrainer;
+        }
+
+        [HttpPost("train")]
+        public async Task<IActionResult> TrainChatbotModel()
+        {
+            try
+            {
+                // Sử dụng đường dẫn cố định đến file responses.csv
+                string filePath = Path.Combine(Directory.GetCurrentDirectory(), "responses.csv");
+
+                // Kiểm tra xem file có tồn tại không
+                if (!System.IO.File.Exists(filePath))
+                {
+                    return BadRequest($"File không tồn tại tại đường dẫn: {filePath}");
+                }
+                var modelTrainer = new ChatModelTrainer();
+                // Huấn luyện mô hình từ file
+                await modelTrainer.TrainModelFromCsvAsync(filePath);
+                return Ok("Mô hình đã được huấn luyện thành công.");
+            }
+            catch (Exception ex)
+            {
+                return BadRequest($"Đã xảy ra lỗi khi huấn luyện mô hình: {ex.Message}");
+            }
+        }
+
+
+
+        // Dự đoán câu trả lời từ câu hỏi của người dùng
+        [HttpPost("predict")]
+        public async Task<IActionResult> PredictResponse([FromBody] string userMessage)
+        {
+            try
+            {
+                // Gọi phương thức bất đồng bộ
+                var response = await _chatModelTrainer.PredictResponseAsync(userMessage);
+                return Ok(new { Response = response });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest($"Đã xảy ra lỗi trong quá trình dự đoán: {ex.Message}");
+            }
         }
 
         //[HttpGet("test-genaric-repo")]

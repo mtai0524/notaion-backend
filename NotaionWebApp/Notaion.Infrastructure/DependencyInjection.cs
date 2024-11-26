@@ -9,11 +9,6 @@ using Notaion.Infrastructure.Context;
 using Notaion.Infrastructure.Persistence;
 using Notaion.Infrastructure.Repositories;
 using Notaion.Infrastructure.Services;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Notaion.Infrastructure
 {
@@ -46,6 +41,8 @@ namespace Notaion.Infrastructure
             services.AddScoped<IAccountRepository, AccountRepository>();
 
             services.AddScoped<ICloudinaryService, CloudinaryService>();
+
+            services.AddSingleton<ChatModelTrainer>();
 
             return services;
         }
