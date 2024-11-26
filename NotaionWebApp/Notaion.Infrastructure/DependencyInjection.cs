@@ -19,16 +19,19 @@ namespace Notaion.Infrastructure
 {
     public static class DependencyInjection
     {
-        public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
+        public static void AddDbContext(this IServiceCollection services, IConfiguration configuration)
         {
             var connectionString = configuration.GetConnectionString("DefaultConnection");
 
             services.AddDbContext<ApplicationDbContext>(options =>
             {
                 options.UseSqlServer(connectionString);
-                options.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking); 
+                options.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);
             }, ServiceLifetime.Scoped);
+        }
 
+        public static IServiceCollection AddInfrastructure(this IServiceCollection services)
+        {
             // chat
             services.AddScoped<IChatRepository, ChatRepository>();
             services.AddScoped<IChatService, ChatService>();

@@ -1,7 +1,9 @@
 ﻿using AutoMapper;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Notaion.Application.Common.Helpers;
 using Notaion.Application.DTOs.Chats;
+using Notaion.Application.Hubs;
 using Notaion.Application.Interfaces.Services;
 using Notaion.Domain.Entities;
 using Notaion.Domain.Interfaces;
@@ -19,12 +21,40 @@ namespace Notaion.Application.Services
         private readonly IChatRepository _chatRepository;
         private readonly IMapper _mapper;
         private readonly IUnitOfWork _unitOfWork;
-        public ChatService(IUnitOfWork unitOfWork, IGenericRepository<Chat> chatGenericRepository, IMapper mapper, IChatRepository chatRepository)
+        private readonly IHubContext<ChatHub> _hubContext;
+        public ChatService(IUnitOfWork unitOfWork, IGenericRepository<Chat> chatGenericRepository, IMapper mapper, IChatRepository chatRepository, IHubContext<ChatHub> hubContext)
         {
             _chatGenericRepository = chatGenericRepository;
             _mapper = mapper;
             _chatRepository = chatRepository;
             _unitOfWork = unitOfWork;
+            _hubContext = hubContext;
+        }
+
+        public async Task<ChatResponseDto> CreateChatbotAsync(CreateChatDto chatDto)
+        {
+            await _unitOfWork.BeginTransactionAsync();
+
+            try
+            {
+                var chat = _mapper.Map<Chat>(chatDto);
+
+                var createdChatbot = await _unitOfWork.ChatRepository.AddChatbotAsync(chat);
+
+                await _unitOfWork.SaveChangeAsync();
+
+                var response = _mapper.Map<ChatResponseDto>(createdChatbot);
+
+                await _unitOfWork.CommitTransactionAsync(); // không có commit thì hủy tất cả thay đổi (sau này làm chat ẩn danh)
+
+                return response;
+            }
+            catch (Exception)
+            {
+                await _unitOfWork.RollbackTransactionAsync();
+                throw;
+            }
+
         }
 
         public async Task<ChatResponseDto> CreateChatAsync(CreateChatDto chatDto)
@@ -33,16 +63,30 @@ namespace Notaion.Application.Services
             {
                 throw new ArgumentException("Invalid chat message.");
             }
+            await _unitOfWork.BeginTransactionAsync();
 
-            var chat = _mapper.Map<Chat>(chatDto);
-            chat.SentDate = DateTimeHelper.GetVietnamTime();
+            try
+            {
+                var chat = _mapper.Map<Chat>(chatDto);
+                chat.SentDate = DateTimeHelper.GetVietnamTime();
 
-            var createdChat = await _chatGenericRepository.AddAsync(chat);
+                var createdChat = await _unitOfWork.ChatRepository.AddAsync(chat);
 
-            var response = _mapper.Map<ChatResponseDto>(createdChat);
+                await _unitOfWork.SaveChangeAsync();
 
-            return response;
+                var response = _mapper.Map<ChatResponseDto>(createdChat);
+
+                await _unitOfWork.CommitTransactionAsync();
+
+                return response;
+            }
+            catch
+            {
+                await _unitOfWork.RollbackTransactionAsync();
+                throw;
+            }
         }
+
 
         public async Task<int> HideChatAllAsync()
         {
@@ -62,7 +106,7 @@ namespace Notaion.Application.Services
             }
             catch
             {
-                await _unitOfWork.RollBackAsync();
+                await _unitOfWork.RollbackTransactionAsync();
                 throw;
             }
         }
@@ -86,7 +130,7 @@ namespace Notaion.Application.Services
         //    return _mapper.Map<List<ChatResponseDto>>(chats);
         //}
 
-        
+
         /*
          * generic repo
          */
@@ -103,6 +147,7 @@ namespace Notaion.Application.Services
             return _mapper.Map<List<ChatResponseDto>>(chats);
         }
 
-     
+
+       
     }
 }

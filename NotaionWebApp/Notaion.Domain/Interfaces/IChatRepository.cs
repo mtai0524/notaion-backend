@@ -9,5 +9,7 @@ namespace Notaion.Domain.Interfaces
 {
     public interface IChatRepository : IGenericRepository<Chat>
     {
+        Task<string> GetChatbotResponseAsync(string userMessage);
+        Task<Chat> AddChatbotAsync(Chat chat);
     }
 }

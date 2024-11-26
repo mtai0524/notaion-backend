@@ -12,6 +12,7 @@ using Notaion.Application.Services;
 using Notaion.Application.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
 using System;
+using Notaion.Domain.Interfaces;
 
 namespace Notaion.Controllers
 {
@@ -25,8 +26,8 @@ namespace Notaion.Controllers
         public ChatController(ApplicationDbContext context, IHubContext<ChatHub> hubContext, IChatService chatService)
         {
             _context = context;
-            _hubContext = hubContext;
             this.chatService = chatService;
+            _hubContext = hubContext;
         }
 
         //[HttpGet("test-genaric-repo")]
@@ -61,7 +62,20 @@ namespace Notaion.Controllers
             {
                 var createdChat = await this.chatService.CreateChatAsync(chatDto);
 
+                if (string.IsNullOrEmpty(createdChat.UserName))
+                {
+                    createdChat.UserName = "mèo con ẩn danh";
+                }
+
                 await _hubContext.Clients.All.SendAsync("ReceiveMessage", createdChat.UserName, createdChat.Content);
+
+
+                if (chatDto.Content.Contains("/bot"))
+                {
+                    var createdChatbot = await this.chatService.CreateChatbotAsync(chatDto);
+
+                    await _hubContext.Clients.All.SendAsync("ReceiveMessage", createdChatbot.UserName, createdChatbot.Content);
+                }
 
                 return Ok(createdChat);
             }

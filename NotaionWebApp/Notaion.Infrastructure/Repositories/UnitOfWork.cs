@@ -12,7 +12,7 @@ namespace Notaion.Infrastructure.Repositories
     public class UnitOfWork : IUnitOfWork
     {
         private readonly ApplicationDbContext _context;
-        private IDbContextTransaction _transaction;
+        private IDbContextTransaction _currentTransaction;
         private readonly Dictionary<Type, object> _repositories;
         public IChatRepository ChatRepository { get; }
         public UnitOfWork(ApplicationDbContext context)
@@ -38,33 +38,36 @@ namespace Notaion.Infrastructure.Repositories
             return _context.SaveChangesAsync();
         }
 
-        public async Task RollBackAsync()
+        public async Task RollbackTransactionAsync()
         {
-            await _transaction.RollbackAsync();
-            await _transaction.DisposeAsync();
-            _transaction = null!;
+            if (_currentTransaction != null)
+            {
+                await _currentTransaction.RollbackAsync();
+                await _currentTransaction.DisposeAsync();
+                _currentTransaction = null;
+            }
         }
 
         public async Task BeginTransactionAsync()
         {
-            _transaction = await _context.Database.BeginTransactionAsync();
+            _currentTransaction = await _context.Database.BeginTransactionAsync();
         }
 
         public async Task CommitTransactionAsync()
         {
             try
             {
-                await _transaction.CommitAsync();
+                await _currentTransaction.CommitAsync();
             }
             catch
             {
-                await _transaction.RollbackAsync();
+                await _currentTransaction.RollbackAsync();
                 return;
             }
             finally
             {
-                await _transaction.DisposeAsync();
-                _transaction = null!;
+                await _currentTransaction.DisposeAsync();
+                _currentTransaction = null!;
             }
 
         }

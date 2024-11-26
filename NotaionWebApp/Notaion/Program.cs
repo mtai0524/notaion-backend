@@ -22,7 +22,8 @@ var builder = WebApplication.CreateBuilder(args);
 
 // clean architecture
 builder.Services.AddApplication();
-builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddDbContext(builder.Configuration);
+builder.Services.AddInfrastructure();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();

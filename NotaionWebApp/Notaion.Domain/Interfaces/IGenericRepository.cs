@@ -20,5 +20,8 @@ namespace Notaion.Domain.Interfaces
         // modifier
         Task UpdateAsync(T entity);
         Task UpdateRangeAsync(IEnumerable<T> entities);
+
+        // delete
+        Task DeleteAsync(string id);
     }
 }

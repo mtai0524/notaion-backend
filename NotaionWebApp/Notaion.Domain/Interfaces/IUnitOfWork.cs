@@ -14,6 +14,6 @@ namespace Notaion.Domain.Interfaces
         Task<int> SaveChangeAsync();
         Task BeginTransactionAsync();
         Task CommitTransactionAsync();
-        Task RollBackAsync();
+        Task RollbackTransactionAsync();
     }
 }

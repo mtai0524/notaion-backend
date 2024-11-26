@@ -22,32 +22,18 @@ namespace Notaion.Infrastructure.Repositories
         }
         public async Task<T> AddAsync(T entity)
         {
-            await _dbSet.AddAsync(entity);
-            await _context.SaveChangesAsync();
-            return entity;
+            var entityEntry = await _dbSet.AddAsync(entity);
+            return entityEntry.Entity;
         }
+        public async Task<T> GetByIdAsync(int id) => await _dbSet.FindAsync(id);
 
-        public async Task<IEnumerable<T>> GetAllAsync() // _context.Chat.ToListAsync()
-        {
-            return await _dbSet.ToListAsync();
-        }
+        public async Task<IEnumerable<T>> GetAllAsync() => await _dbSet.ToListAsync(); // _context.Chat.ToListAsync()
 
         public async Task<IEnumerable<T>> GetAsync(Expression<Func<T, bool>> predicate)
         {
             return await _dbSet.Where(predicate).ToListAsync();
         }
-
-        public async Task<T> GetByIdAsync(int id)
-        {
-            return await _dbSet.FindAsync(id);
-        }
-
-        public async Task UpdateAsync(T entity)
-        {
-            _dbSet.Attach(entity);
-            _context.Entry(entity).State = EntityState.Modified;
-            await Task.CompletedTask;
-        }
+        public async Task UpdateAsync(T entity) => _dbSet.Update(entity);
 
         public async Task UpdateRangeAsync(IEnumerable<T> entities)
         {
@@ -57,6 +43,12 @@ namespace Notaion.Infrastructure.Repositories
                 _context.Entry(entity).State = EntityState.Modified;
             }
             await Task.CompletedTask;
+        }
+        public async Task DeleteAsync(string id)
+        {
+            var entity = await _dbSet.FindAsync(id);
+            if (entity != null)
+                _dbSet.Remove(entity);
         }
     }
 }
