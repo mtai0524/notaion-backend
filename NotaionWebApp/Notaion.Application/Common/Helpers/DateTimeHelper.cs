@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace Notaion.Application.Common.Helpers
+﻿namespace Notaion.Application.Common.Helpers
 {
     public static class DateTimeHelper
     {
@@ -13,6 +7,10 @@ namespace Notaion.Application.Common.Helpers
         public static DateTime GetVietnamTime()
         {
             return TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, VietnamTimeZone);
+        }
+        public static string GetCurrentYear()
+        {
+            return DateTime.Now.Year.ToString();
         }
 
         public static DateTime ConvertToVietnamTime(DateTime dateTime)

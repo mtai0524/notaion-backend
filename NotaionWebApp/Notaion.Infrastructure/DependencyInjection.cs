@@ -44,6 +44,9 @@ namespace Notaion.Infrastructure
 
             services.AddSingleton<ChatModelTrainer>();
 
+            // services
+            services.AddSingleton<IEncryptionService, EncryptionService>();
+
             return services;
         }
     }

@@ -1,5 +1,9 @@
-﻿using Microsoft.ML;
+﻿using CsvHelper;
+using CsvHelper.Configuration;
+using Microsoft.ML;
 using Microsoft.ML.Data;
+using Notaion.Application.Common.Helpers;
+using System.Globalization;
 
 namespace Notaion.Infrastructure.Repositories
 {
@@ -13,10 +17,21 @@ namespace Notaion.Infrastructure.Repositories
         public string Response { get; set; }
     }
 
+
+
     // Lớp huấn luyện mô hình
     public class ChatModelTrainer
     {
         private readonly string ModelPath = Path.Combine(Directory.GetCurrentDirectory(), "chatbot_model.zip");
+
+        private IEnumerable<ChatData> ReadCsvData(string filePath)
+        {
+            using (var reader = new StreamReader(filePath))
+            using (var csv = new CsvReader(reader, new CsvConfiguration(CultureInfo.InvariantCulture) { HasHeaderRecord = true }))
+            {
+                return csv.GetRecords<ChatData>().ToList();
+            }
+        }
 
         // Huấn luyện mô hình từ file CSV
         public async Task TrainModelFromCsvAsync(string filePath)
@@ -26,7 +41,10 @@ namespace Notaion.Infrastructure.Repositories
                 var mlContext = new MLContext();
 
                 // Đọc dữ liệu từ tệp CSV
-                var data = mlContext.Data.LoadFromTextFile<ChatData>(filePath, separatorChar: ',', hasHeader: true);
+                var chatData = ReadCsvData(filePath);
+
+                var data = mlContext.Data.LoadFromEnumerable(chatData);
+
 
                 var preview = data.Preview(10); // Hiển thị 10 dòng đầu tiên của dữ liệu
                 foreach (var row in preview.RowView)
@@ -77,6 +95,8 @@ namespace Notaion.Infrastructure.Repositories
             {
                 var mlContext = new MLContext();
 
+
+
                 // Kiểm tra xem mô hình có tồn tại không
                 if (!File.Exists(ModelPath))
                 {
@@ -92,14 +112,23 @@ namespace Notaion.Infrastructure.Repositories
                 // Sử dụng mô hình thực tế để dự đoán phản hồi
                 var prediction = predictionEngine.Predict(new ChatData { Question = userMessage });
 
-                // Kiểm tra kết quả dự đoán từ mô hình
-                if (string.IsNullOrWhiteSpace(prediction?.PredictedLabel))
+                if (!string.IsNullOrWhiteSpace(prediction?.PredictedLabel))
                 {
-                    return "Xin lỗi, tôi không thể trả lời câu hỏi này.";
+                    var predictedResponse = prediction.PredictedLabel;
+
+                    if (predictedResponse.Contains("{current_time}"))
+                    {
+                        var currentTime = DateTimeHelper.GetVietnamTime().ToString("dd/MM/yyyy HH:mm:ss");
+                        predictedResponse = predictedResponse.Replace("{current_time}", currentTime);
+                    }
+
+                    // Trả về kết quả dự đoán
+                    return predictedResponse;
                 }
 
-                // Trả về kết quả dự đoán
-                return prediction.PredictedLabel;
+
+                return "Xin lỗi, tôi không thể trả lời câu hỏi này.";
+
             }
             catch (FileNotFoundException ex)
             {

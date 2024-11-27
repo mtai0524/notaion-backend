@@ -1,17 +1,10 @@
 ﻿using AutoMapper;
-using Microsoft.AspNetCore.SignalR;
-using Microsoft.EntityFrameworkCore;
 using Notaion.Application.Common.Helpers;
 using Notaion.Application.DTOs.Chats;
-using Notaion.Application.Hubs;
 using Notaion.Application.Interfaces.Services;
 using Notaion.Domain.Entities;
 using Notaion.Domain.Interfaces;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Security.Cryptography;
 
 namespace Notaion.Application.Services
 {
@@ -21,14 +14,14 @@ namespace Notaion.Application.Services
         private readonly IChatRepository _chatRepository;
         private readonly IMapper _mapper;
         private readonly IUnitOfWork _unitOfWork;
-        private readonly IHubContext<ChatHub> _hubContext;
-        public ChatService(IUnitOfWork unitOfWork, IGenericRepository<Chat> chatGenericRepository, IMapper mapper, IChatRepository chatRepository, IHubContext<ChatHub> hubContext)
+        private readonly IEncryptionService _encryptionService;
+        public ChatService(IUnitOfWork unitOfWork, IGenericRepository<Chat> chatGenericRepository, IMapper mapper, IChatRepository chatRepository, IEncryptionService encryptionService)
         {
             _chatGenericRepository = chatGenericRepository;
             _mapper = mapper;
             _chatRepository = chatRepository;
             _unitOfWork = unitOfWork;
-            _hubContext = hubContext;
+            _encryptionService = encryptionService;
         }
 
         public async Task<ChatResponseDto> CreateChatbotAsync(CreateChatDto chatDto)
@@ -37,6 +30,8 @@ namespace Notaion.Application.Services
 
             try
             {
+                chatDto.Content = _encryptionService.Encrypt(chatDto.Content);
+
                 var chat = _mapper.Map<Chat>(chatDto);
 
                 var createdChatbot = await _unitOfWork.ChatRepository.AddChatbotAsync(chat);
@@ -54,7 +49,6 @@ namespace Notaion.Application.Services
                 await _unitOfWork.RollbackTransactionAsync();
                 throw;
             }
-
         }
 
         public async Task<ChatResponseDto> CreateChatAsync(CreateChatDto chatDto)
@@ -67,6 +61,8 @@ namespace Notaion.Application.Services
 
             try
             {
+                chatDto.Content = _encryptionService.Encrypt(chatDto.Content);
+
                 var chat = _mapper.Map<Chat>(chatDto);
                 chat.SentDate = DateTimeHelper.GetVietnamTime();
 
@@ -117,8 +113,41 @@ namespace Notaion.Application.Services
         public async Task<List<ChatResponseDto>> GetChatsAsync()
         {
             var chats = await _unitOfWork.ChatRepository.GetAsync(x => x.Hide == false);
-            return _mapper.Map<List<ChatResponseDto>>(chats);
+
+            var chatResponseDtos = new List<ChatResponseDto>();
+
+            foreach (var chat in chats)
+            {
+                var chatDto = _mapper.Map<ChatResponseDto>(chat);
+
+                try
+                {
+                    var encryptionService = new EncryptionService();
+
+                    string plainText = "Hello, world!";
+                    string encrypted = encryptionService.Encrypt(plainText);
+                    string decrypted = encryptionService.Decrypt(encrypted);
+
+                    Console.WriteLine($"PlainText: {plainText}");
+                    Console.WriteLine($"Encrypted: {encrypted}");
+                    Console.WriteLine($"Decrypted: {decrypted}");
+
+                    // giải mã
+                    chatDto.Content = _encryptionService.Decrypt(chat.Content);
+                }
+                catch (CryptographicException ex)
+                {
+                    Console.WriteLine($"Failed to decrypt chat content. Chat ID: {chat.Id}, Error: {ex.Message}");
+                    chatDto.Content = "[Unable to decrypt message]";
+                }
+
+                chatResponseDtos.Add(chatDto);
+            }
+
+            return chatResponseDtos;
         }
+
+
 
 
         /*
@@ -148,6 +177,6 @@ namespace Notaion.Application.Services
         }
 
 
-       
+
     }
 }

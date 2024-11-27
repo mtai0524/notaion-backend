@@ -1,11 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore.Storage;
 using Notaion.Domain.Interfaces;
 using Notaion.Infrastructure.Context;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Notaion.Infrastructure.Repositories
 {
@@ -14,6 +9,7 @@ namespace Notaion.Infrastructure.Repositories
         private readonly ApplicationDbContext _context;
         private IDbContextTransaction _currentTransaction;
         private readonly Dictionary<Type, object> _repositories;
+
         public IChatRepository ChatRepository { get; }
         public UnitOfWork(ApplicationDbContext context)
         {

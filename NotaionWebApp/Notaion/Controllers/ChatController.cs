@@ -18,12 +18,15 @@ namespace Notaion.Controllers
         private readonly IHubContext<ChatHub> _hubContext;
         private readonly IChatService chatService;
         private readonly ChatModelTrainer _chatModelTrainer;
-        public ChatController(ApplicationDbContext context, IHubContext<ChatHub> hubContext, IChatService chatService, ChatModelTrainer chatModelTrainer)
+        private readonly IEncryptionService _encryptionService;
+
+        public ChatController(ApplicationDbContext context, IHubContext<ChatHub> hubContext, IChatService chatService, ChatModelTrainer chatModelTrainer, IEncryptionService encryptionService)
         {
             _context = context;
             this.chatService = chatService;
             _hubContext = hubContext;
             _chatModelTrainer = chatModelTrainer;
+            _encryptionService = encryptionService;
         }
 
         [HttpPost("train")]
@@ -58,9 +61,11 @@ namespace Notaion.Controllers
         {
             try
             {
-                // Gọi phương thức bất đồng bộ
                 var response = await _chatModelTrainer.PredictResponseAsync(userMessage);
-                return Ok(new { Response = response });
+
+                var cleanedResponse = response.Replace("\"", "").Trim();
+
+                return Ok(new { Response = cleanedResponse });
             }
             catch (Exception ex)
             {
@@ -105,14 +110,14 @@ namespace Notaion.Controllers
                     createdChat.UserName = "mèo con ẩn danh";
                 }
 
-                await _hubContext.Clients.All.SendAsync("ReceiveMessage", createdChat.UserName, createdChat.Content);
+                await _hubContext.Clients.All.SendAsync("ReceiveMessage", createdChat.UserName, _encryptionService.Decrypt(createdChat.Content));
 
 
                 if (chatDto.Content.Contains("/bot"))
                 {
                     var createdChatbot = await this.chatService.CreateChatbotAsync(chatDto);
 
-                    await _hubContext.Clients.All.SendAsync("ReceiveMessage", createdChatbot.UserName, createdChatbot.Content);
+                    await _hubContext.Clients.All.SendAsync("ReceiveMessage", createdChatbot.UserName, _encryptionService.Decrypt(createdChat.Content));
                 }
 
                 return Ok(createdChat);
