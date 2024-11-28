@@ -1,13 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using Notaion.Domain.Entities;
 using Notaion.Domain.Interfaces;
 using Notaion.Infrastructure.Context;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Linq.Expressions;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Notaion.Infrastructure.Repositories
 {
@@ -31,7 +25,10 @@ namespace Notaion.Infrastructure.Repositories
 
         public async Task<IEnumerable<T>> GetAsync(Expression<Func<T, bool>> predicate)
         {
-            return await _dbSet.Where(predicate).ToListAsync();
+            return await _dbSet
+                .Where(predicate)
+                .OrderByDescending(x => EF.Property<DateTime>(x, "SentDate"))
+                .ToListAsync();
         }
         public async Task UpdateAsync(T entity) => _dbSet.Update(entity);
 
@@ -49,6 +46,23 @@ namespace Notaion.Infrastructure.Repositories
             var entity = await _dbSet.FindAsync(id);
             if (entity != null)
                 _dbSet.Remove(entity);
+        }
+
+        public async Task<int> CountAsync(Expression<Func<T, bool>> predicate)
+        {
+            return await _dbSet
+                .Where(predicate)
+                .CountAsync();
+        }
+
+        public async Task<IEnumerable<T>> GetPaginatedAsync(Expression<Func<T, bool>> predicate, int pageNumber, int pageSize)
+        {
+            return await _dbSet
+                .Where(predicate)
+                .OrderByDescending(x => EF.Property<DateTime>(x, "SentDate"))  // Thêm sắp xếp theo ngày gửi (nếu cần)
+                .Skip((pageNumber - 1) * pageSize)  // Bỏ qua các bản ghi trước trang hiện tại
+                .Take(pageSize)  // Lấy số lượng bản ghi trong trang
+                .ToListAsync();
         }
     }
 }

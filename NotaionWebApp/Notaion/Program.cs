@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.IdentityModel.Tokens;
 using Notaion.Application;
 using Notaion.Domain.Entities;
+using Notaion.Filters;
 using Notaion.Hubs;
 using Notaion.Infrastructure;
 using Notaion.Infrastructure.Context;
@@ -20,7 +21,12 @@ builder.Services.AddInfrastructure();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+
+builder.Services.AddSwaggerGen(c =>
+{
+    c.OperationFilter<SwaggerIgnoreFilter>();
+});
+
 builder.Services.AddSignalR();
 
 builder.Configuration

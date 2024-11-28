@@ -9,13 +9,11 @@ namespace Notaion.Infrastructure.Repositories
         private readonly ApplicationDbContext _context;
         private IDbContextTransaction _currentTransaction;
         private readonly Dictionary<Type, object> _repositories;
-
-        public IChatRepository ChatRepository { get; }
+        public IChatRepository ChatRepository => new ChatRepository(_context);
         public UnitOfWork(ApplicationDbContext context)
         {
             _context = context;
             _repositories = new Dictionary<Type, object>();
-            ChatRepository = new ChatRepository(_context);
         }
 
         public IGenericRepository<T> GetGenericRepository<T>() where T : class

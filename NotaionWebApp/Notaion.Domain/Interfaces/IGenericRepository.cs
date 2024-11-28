@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Linq.Expressions;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Linq.Expressions;
 
 namespace Notaion.Domain.Interfaces
 {
@@ -23,5 +18,10 @@ namespace Notaion.Domain.Interfaces
 
         // delete
         Task DeleteAsync(string id);
+
+        // paging 
+        Task<IEnumerable<T>> GetPaginatedAsync(Expression<Func<T, bool>> predicate, int pageNumber, int pageSize);
+
+        Task<int> CountAsync(Expression<Func<T, bool>> predicate);
     }
 }

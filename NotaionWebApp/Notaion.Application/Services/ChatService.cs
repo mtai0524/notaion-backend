@@ -1,7 +1,9 @@
 ﻿using AutoMapper;
 using Notaion.Application.Common.Helpers;
+using Notaion.Application.DTOs;
 using Notaion.Application.DTOs.Chats;
 using Notaion.Application.Interfaces.Services;
+using Notaion.Application.Options;
 using Notaion.Domain.Entities;
 using Notaion.Domain.Interfaces;
 using System.Security.Cryptography;
@@ -30,9 +32,9 @@ namespace Notaion.Application.Services
 
             try
             {
-                chatDto.Content = _encryptionService.Encrypt(chatDto.Content);
-
                 var chat = _mapper.Map<Chat>(chatDto);
+
+                chat.Content = _encryptionService.Decrypt(chat.Content);
 
                 var createdChatbot = await _unitOfWork.ChatRepository.AddChatbotAsync(chat);
 
@@ -110,9 +112,10 @@ namespace Notaion.Application.Services
         /*
          * uow generic call repo not pass entity
          */
-        public async Task<List<ChatResponseDto>> GetChatsAsync()
+        public async Task<PaginatedResultDto<ChatResponseDto>> GetChatsAsync(QueryOptions options, bool decrypt = false)
         {
-            var chats = await _unitOfWork.ChatRepository.GetAsync(x => x.Hide == false);
+            var totalChats = await _unitOfWork.ChatRepository.CountAsync(x => x.Hide == false);
+            var chats = await _unitOfWork.ChatRepository.GetPaginatedAsync(x => x.Hide == false, options.PageNumber, options.PageSize);
 
             var chatResponseDtos = new List<ChatResponseDto>();
 
@@ -120,60 +123,68 @@ namespace Notaion.Application.Services
             {
                 var chatDto = _mapper.Map<ChatResponseDto>(chat);
 
-                try
+                if (decrypt)
                 {
-                    var encryptionService = new EncryptionService();
-
-                    string plainText = "Hello, world!";
-                    string encrypted = encryptionService.Encrypt(plainText);
-                    string decrypted = encryptionService.Decrypt(encrypted);
-
-                    Console.WriteLine($"PlainText: {plainText}");
-                    Console.WriteLine($"Encrypted: {encrypted}");
-                    Console.WriteLine($"Decrypted: {decrypted}");
-
-                    // giải mã
-                    chatDto.Content = _encryptionService.Decrypt(chat.Content);
+                    try
+                    {
+                        chatDto.Content = _encryptionService.Decrypt(chat.Content);
+                    }
+                    catch (CryptographicException ex)
+                    {
+                        Console.WriteLine($"Failed to decrypt chat content. Chat ID: {chat.Id}, Error: {ex.Message}");
+                        chatDto.Content = "[Unable to decrypt message]";
+                    }
                 }
-                catch (CryptographicException ex)
+                else
                 {
-                    Console.WriteLine($"Failed to decrypt chat content. Chat ID: {chat.Id}, Error: {ex.Message}");
-                    chatDto.Content = "[Unable to decrypt message]";
+                    chatDto.Content = chat.Content;
+                }
+
+                chatResponseDtos.Add(chatDto);
+            }
+
+            return PaginatedResultHelper.CreatePaginatedResult(
+                chatResponseDtos,
+                totalChats,
+                options.PageNumber,
+                options.PageSize
+            );
+        }
+
+
+        public async Task<List<ChatResponseDto>> GetChatsHiddenAsync(bool decrypt = false)
+        {
+            var chats = await _unitOfWork.ChatRepository.GetAsync(x => x.Hide == true);
+
+            var chatResponseDtos = new List<ChatResponseDto>();
+
+            foreach (var chat in chats)
+            {
+                var chatDto = _mapper.Map<ChatResponseDto>(chat);
+
+                if (decrypt)
+                {
+                    try
+                    {
+                        // giải mã nếu decrypt = true
+                        chatDto.Content = _encryptionService.Decrypt(chat.Content);
+                    }
+                    catch (CryptographicException ex)
+                    {
+                        Console.WriteLine($"Failed to decrypt chat content. Chat ID: {chat.Id}, Error: {ex.Message}");
+                        chatDto.Content = "[Unable to decrypt message]";
+                    }
+                }
+                else
+                {
+                    //  mã hóa
+                    chatDto.Content = chat.Content;
                 }
 
                 chatResponseDtos.Add(chatDto);
             }
 
             return chatResponseDtos;
-        }
-
-
-
-
-        /*
-         * uow generic param entity
-         */
-        //public async Task<List<ChatResponseDto>> GetChatsAsync()
-        //{
-        //    var chats = await _unitOfWork.GetGenericRepository<Chat>().GetAllAsync();
-        //    return _mapper.Map<List<ChatResponseDto>>(chats);
-        //}
-
-
-        /*
-         * generic repo
-         */
-
-        //public async Task<List<ChatResponseDto>> GetChatsAsync()
-        //{
-        //    var chats = await _chatRepository.GetAllAsync();
-        //    return _mapper.Map<List<ChatResponseDto>>(chats);
-        //}
-
-        public async Task<List<ChatResponseDto>> GetChatsHiddenAsync()
-        {
-            var chats = await _chatGenericRepository.GetAllAsync();
-            return _mapper.Map<List<ChatResponseDto>>(chats);
         }
 
 

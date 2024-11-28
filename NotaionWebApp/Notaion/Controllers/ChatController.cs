@@ -1,12 +1,13 @@
-﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Notaion.Application.DTOs.Chats;
 using Notaion.Application.Interfaces.Services;
+using Notaion.Application.Options;
 using Notaion.Hubs;
 using Notaion.Infrastructure.Context;
 using Notaion.Infrastructure.Repositories;
+using Swashbuckle.AspNetCore.Annotations;
 
 namespace Notaion.Controllers
 {
@@ -53,8 +54,6 @@ namespace Notaion.Controllers
             }
         }
 
-
-
         // Dự đoán câu trả lời từ câu hỏi của người dùng
         [HttpPost("predict")]
         public async Task<IActionResult> PredictResponse([FromBody] string userMessage)
@@ -73,22 +72,18 @@ namespace Notaion.Controllers
             }
         }
 
-        //[HttpGet("test-genaric-repo")]
-        //public async Task<IActionResult> GetChatWithGenaricRepo()
-        //{
-        //    var chats = await chatService.GetChatsAsync();
-        //    return Ok(chats);
-        //}
-
         //[Authorize]
         [HttpGet("get-chats")]
-        public async Task<IActionResult> GetChats()
+        [SwaggerOperation(Summary = "Get list of chats")]
+        public async Task<IActionResult> GetChats([FromQuery] QueryOptions options,
+                                           [FromQuery, SwaggerIgnore] bool decrypt = false)
         {
-            return Ok(await this.chatService.GetChatsAsync());
+            var result = await this.chatService.GetChatsAsync(options, decrypt);
+            return Ok(result);
         }
 
         [HttpGet("get-chats-hidden")]
-        public async Task<IActionResult> GetChatsHidden()
+        public async Task<IActionResult> GetChatsHidden([FromQuery] bool decrypt = false)
         {
             return Ok(await this.chatService.GetChatsHiddenAsync());
         }
@@ -103,6 +98,8 @@ namespace Notaion.Controllers
 
             try
             {
+                Console.WriteLine($"[AddChat] Received Content: {chatDto.Content}");
+
                 var createdChat = await this.chatService.CreateChatAsync(chatDto);
 
                 if (string.IsNullOrEmpty(createdChat.UserName))
@@ -110,25 +107,35 @@ namespace Notaion.Controllers
                     createdChat.UserName = "mèo con ẩn danh";
                 }
 
-                await _hubContext.Clients.All.SendAsync("ReceiveMessage", createdChat.UserName, _encryptionService.Decrypt(createdChat.Content));
+                var decryptedContent = _encryptionService.Decrypt(createdChat.Content);
+                await _hubContext.Clients.All.SendAsync("ReceiveMessage", createdChat.UserName, decryptedContent);
 
-
-                if (chatDto.Content.Contains("/bot"))
+                if (decryptedContent.Contains("/bot"))
                 {
+                    Console.WriteLine($"[ChatBot] Triggered for content: {decryptedContent}");
                     var createdChatbot = await this.chatService.CreateChatbotAsync(chatDto);
+                    var decryptedChatbotContent = _encryptionService.Decrypt(createdChatbot.Content);
 
-                    await _hubContext.Clients.All.SendAsync("ReceiveMessage", createdChatbot.UserName, _encryptionService.Decrypt(createdChat.Content));
+                    await _hubContext.Clients.All.SendAsync("ReceiveMessage", createdChatbot.UserName, decryptedChatbotContent);
                 }
+
+                createdChat.Content = decryptedContent;
 
                 return Ok(createdChat);
             }
+            catch (FormatException ex)
+            {
+                Console.WriteLine($"[Error] FormatException: {ex.Message}");
+                return BadRequest($"Invalid Base64 content: {ex.Message}");
+            }
             catch (Exception ex)
             {
+                Console.WriteLine($"[Error] Exception: {ex.Message}");
                 return StatusCode(500, $"Internal server error: {ex.Message}");
             }
         }
 
-        [Authorize]
+
         [HttpDelete("delete-all-chats")]
         public async Task<IActionResult> DeleteAllChats()
         {
