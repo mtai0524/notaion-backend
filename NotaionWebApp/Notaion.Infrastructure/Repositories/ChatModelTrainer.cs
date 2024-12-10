@@ -4,6 +4,7 @@ using Microsoft.ML;
 using Microsoft.ML.Data;
 using Notaion.Application.Common.Helpers;
 using System.Globalization;
+using System.Text.RegularExpressions;
 
 namespace Notaion.Infrastructure.Repositories
 {
@@ -17,19 +18,34 @@ namespace Notaion.Infrastructure.Repositories
         public string Response { get; set; }
     }
 
-
-
     // Lớp huấn luyện mô hình
     public class ChatModelTrainer
     {
         private readonly string ModelPath = Path.Combine(Directory.GetCurrentDirectory(), "chatbot_model.zip");
 
+        // Thay thế đường link trong câu hỏi bằng placeholder {URL}
+        private static string ReplaceUrlsWithPlaceholderInQuestion(string input)
+        {
+            string pattern = @"http[^\s]+";
+            return Regex.Replace(input, pattern, "{URL}");
+        }
+
+        // Đọc dữ liệu từ CSV và chỉ thay thế đường link trong câu hỏi, không thay đường link trong
+        // câu trả lời
         private IEnumerable<ChatData> ReadCsvData(string filePath)
         {
             using (var reader = new StreamReader(filePath))
             using (var csv = new CsvReader(reader, new CsvConfiguration(CultureInfo.InvariantCulture) { HasHeaderRecord = true }))
             {
-                return csv.GetRecords<ChatData>().ToList();
+                var records = csv.GetRecords<ChatData>().ToList();
+
+                // Thay thế đường link trong câu hỏi, nhưng không thay thế trong câu trả lời
+                foreach (var record in records)
+                {
+                    record.Question = ReplaceUrlsWithPlaceholderInQuestion(record.Question);
+                }
+
+                return records;
             }
         }
 
@@ -44,7 +60,6 @@ namespace Notaion.Infrastructure.Repositories
                 var chatData = ReadCsvData(filePath);
 
                 var data = mlContext.Data.LoadFromEnumerable(chatData);
-
 
                 var preview = data.Preview(10); // Hiển thị 10 dòng đầu tiên của dữ liệu
                 foreach (var row in preview.RowView)
@@ -95,8 +110,6 @@ namespace Notaion.Infrastructure.Repositories
             {
                 var mlContext = new MLContext();
 
-
-
                 // Kiểm tra xem mô hình có tồn tại không
                 if (!File.Exists(ModelPath))
                 {
@@ -109,8 +122,11 @@ namespace Notaion.Infrastructure.Repositories
                 // Tạo prediction engine
                 var predictionEngine = mlContext.Model.CreatePredictionEngine<ChatData, ChatPrediction>(model);
 
-                // Sử dụng mô hình thực tế để dự đoán phản hồi
-                var prediction = predictionEngine.Predict(new ChatData { Question = userMessage });
+                // Thay thế đường link trong câu hỏi (nếu có) bằng placeholder {URL}
+                var inputQuestion = ReplaceUrlsWithPlaceholderInQuestion(userMessage);
+
+                // Dự đoán phản hồi từ mô hình
+                var prediction = predictionEngine.Predict(new ChatData { Question = inputQuestion });
 
                 if (!string.IsNullOrWhiteSpace(prediction?.PredictedLabel))
                 {
@@ -122,13 +138,18 @@ namespace Notaion.Infrastructure.Repositories
                         predictedResponse = predictedResponse.Replace("{current_time}", currentTime);
                     }
 
+                    // Nếu có đường link trong câu hỏi, thay lại {URL} bằng URL thực tế
+                    var match = Regex.Match(userMessage, @"http[^\s]+");
+                    if (match.Success)
+                    {
+                        predictedResponse = predictedResponse.Replace("{URL}", match.Value);
+                    }
+
                     // Trả về kết quả dự đoán
                     return predictedResponse;
                 }
 
-
                 return "Xin lỗi, tôi không thể trả lời câu hỏi này.";
-
             }
             catch (FileNotFoundException ex)
             {
@@ -141,11 +162,9 @@ namespace Notaion.Infrastructure.Repositories
         }
     }
 
-
-    // Dự đoán phản hồi cho một câu hỏi
     public class ChatPrediction
     {
-        public string Question { get; set; } // Câu hỏi gốc
-        public string PredictedLabel { get; set; }  // Câu trả lời dự đoán
+        public string Question { get; set; }
+        public string PredictedLabel { get; set; }
     }
 }
