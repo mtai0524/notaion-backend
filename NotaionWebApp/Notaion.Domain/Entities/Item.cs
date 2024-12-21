@@ -1,11 +1,11 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using Notaion.Domain.Common;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Notaion.Domain.Entities
 {
-    public class Item
+    [Table("Item")]
+    public class Item : BaseEntity<Guid>
     {
-        [Key]
-        public string Id { get; set; }
         public string? Content { get; set; }
         public string? Heading { get; set; }
         public int? Order { get; set; }

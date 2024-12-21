@@ -1,11 +1,8 @@
-﻿using CloudinaryDotNet.Actions;
-using CloudinaryDotNet;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
-using Notaion.Infrastructure.Context;
-using Notaion.Domain.Entities;
 using Notaion.Application.Common.Interfaces;
+using Notaion.Domain.Entities;
+using Notaion.Infrastructure.Context;
 
 namespace Notaion.API.Controllers
 {
@@ -90,7 +87,7 @@ namespace Notaion.API.Controllers
         }
 
         [HttpDelete("delete-item/{id}")]
-        public async Task<IActionResult> DeleteItem(string id)
+        public async Task<IActionResult> DeleteItem(Guid id)
         {
             try
             {
