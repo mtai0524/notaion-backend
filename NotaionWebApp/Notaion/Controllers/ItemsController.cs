@@ -24,11 +24,13 @@ namespace Notaion.API.Controllers
         {
             return await _context.Items.OrderBy(x => x.Order).Where(x => x.IsHide == false).ToListAsync();
         }
+
         [HttpGet("get-list-items-hidden")]
         public async Task<ActionResult<IEnumerable<Item>>> GetItemsHidden()
         {
             return await _context.Items.OrderBy(x => x.Order).Where(x => x.IsHide == true).ToListAsync();
         }
+
         // POST: api/Items
         [HttpPost]
         public async Task<ActionResult<Item>> PostItem(Item item)

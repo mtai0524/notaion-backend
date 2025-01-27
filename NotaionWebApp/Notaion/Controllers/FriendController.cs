@@ -63,10 +63,10 @@ namespace Notaion.Controllers
 
         public class FriendRequestDto
         {
-            public string RequesterId { get; set; }
-            public string RequesterName { get; set; }
-            public string RecipientId { get; set; }
-            public string Avatar { get; set; }
+            public string? RequesterId { get; set; }
+            public string? RequesterName { get; set; }
+            public string? RecipientId { get; set; }
+            public string? Avatar { get; set; }
         }
     }
 }

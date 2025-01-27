@@ -9,15 +9,20 @@ using Notaion.Filters;
 using Notaion.Hubs;
 using Notaion.Infrastructure;
 using Notaion.Infrastructure.Context;
+using Notaion.Infrastructure.Identity;
 using Notaion.Infrastructure.Options;
+using NSwag.Generation.Processors.Security;
+using Scalar.AspNetCore;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
+
+
 // clean architecture
 builder.Services.AddApplication();
 builder.Services.AddDbContext(builder.Configuration);
-builder.Services.AddInfrastructure();
+builder.Services.AddInfrastructure(builder.Configuration);
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -80,60 +85,36 @@ builder.Services.AddResponseCompression(options =>
     });
 });
 
-builder.Services.Configure<IdentityOptions>(options =>
+
+// open api
+builder.Services.AddOpenApi();
+builder.Services.AddOpenApiDocument(options =>
 {
-    options.Password.RequiredLength = 3;
-    options.Password.RequireLowercase = false;
-    options.Password.RequireUppercase = false;
-    options.Password.RequireDigit = false;
-    options.Password.RequireNonAlphanumeric = false;
-});
-builder.Services.Configure<IdentityOptions>(options =>
-{
-    options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(30);
-    options.Lockout.AllowedForNewUsers = true;
-    options.SignIn.RequireConfirmedEmail = false;
-    options.User.RequireUniqueEmail = true;
-});
-builder.Services.AddAuthentication(options =>
-{
-    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
-}).AddJwtBearer(options =>
-{
-    options.SaveToken = true;
-    options.RequireHttpsMetadata = false;
-    options.TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters
+    options.AddSecurity("Bearer", new NSwag.OpenApiSecurityScheme
     {
-        ValidateIssuer = true,
-        ValidateAudience = true,
-        ValidateLifetime = true,
-        ValidateIssuerSigningKey = true,
-        ValidAudience = builder.Configuration["JWT:ValidAudience"],
-        ValidIssuer = builder.Configuration["JWT:ValidIssuer"],
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["JWT:Secret"]))
-    };
+        Description = "Bearer token authorization header",
+        Type = NSwag.OpenApiSecuritySchemeType.Http,
+        In = NSwag.OpenApiSecurityApiKeyLocation.Header,
+        Name = "Authorization",
+        Scheme = "Bearer"
+    });
+
+    options.OperationProcessors.Add(new AspNetCoreOperationSecurityScopeProcessor("Bearer"));
 });
 
-
-
-//builder.Services.AddSignalR().AddHubOptions<ChatHub>(options =>
-//{
-//    options.ClientTimeoutInterval = TimeSpan.FromMinutes(5);
-//    options.KeepAliveInterval = TimeSpan.FromMinutes(2);
-//}).AddJsonProtocol(options =>
-//{
-//    options.PayloadSerializerOptions.PropertyNamingPolicy = null;
-//});
 
 var app = builder.Build();
 
-//if (app.Environment.IsDevelopment())
-//{
-app.UseSwagger();
-app.UseSwaggerUI();
-//}
+if (app.Environment.IsDevelopment())
+{
+    app.UseOpenApi();
+    app.UseSwaggerUI();
+}
+
+app.MapOpenApi();
+app.MapScalarApiReference();
+
+
 app.MapHub<ChatHub>("/chatHub");
 
 app.UseHttpsRedirection();

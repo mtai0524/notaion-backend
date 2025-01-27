@@ -1,26 +1,27 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net7.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
+	  <TargetFramework>net9.0</TargetFramework>
+	  <ImplicitUsings>enable</ImplicitUsings>
+	<Nullable>enable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="CloudinaryDotNet" Version="1.26.2" />
-    <PackageReference Include="CsvHelper" Version="33.0.1" />
-    <PackageReference Include="FuzzySharp" Version="2.0.2" />
-    <PackageReference Include="Microsoft.AspNetCore.Http.Features" Version="5.0.17" />
-    <PackageReference Include="Microsoft.AspNetCore.Identity" Version="2.2.0" />
-    <PackageReference Include="Microsoft.AspNetCore.Mvc.Core" Version="2.2.5" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="7.0.20" />
-    <PackageReference Include="Microsoft.ML" Version="4.0.0" />
-    <PackageReference Include="OpenAI" Version="2.0.0" />
+	<PackageReference Include="CloudinaryDotNet" Version="1.27.2" />
+	<PackageReference Include="CsvHelper" Version="33.0.1" />
+	<PackageReference Include="FuzzySharp" Version="2.0.2" />
+	<PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.1" />
+	<PackageReference Include="Microsoft.AspNetCore.Http.Features" Version="5.0.17" />
+	<PackageReference Include="Microsoft.AspNetCore.Identity" Version="2.3.0" />
+	<PackageReference Include="Microsoft.AspNetCore.Mvc.Core" Version="2.3.0" />
+	<PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.1" />
+	<PackageReference Include="Microsoft.ML" Version="4.0.1" />
+	<PackageReference Include="OpenAI" Version="2.1.0" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Notaion.Application\Notaion.Application.csproj" />
-    <ProjectReference Include="..\Notaion.Domain\Notaion.Domain.csproj" />
+	<ProjectReference Include="..\Notaion.Application\Notaion.Application.csproj" />
+	<ProjectReference Include="..\Notaion.Domain\Notaion.Domain.csproj" />
   </ItemGroup>
 
 </Project>

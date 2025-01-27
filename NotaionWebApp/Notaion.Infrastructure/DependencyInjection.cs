@@ -6,6 +6,7 @@ using Notaion.Application.Interfaces.Services;
 using Notaion.Application.Services;
 using Notaion.Domain.Interfaces;
 using Notaion.Infrastructure.Context;
+using Notaion.Infrastructure.Identity;
 using Notaion.Infrastructure.Persistence;
 using Notaion.Infrastructure.Repositories;
 using Notaion.Infrastructure.Services;
@@ -25,8 +26,11 @@ namespace Notaion.Infrastructure
             }, ServiceLifetime.Scoped);
         }
 
-        public static IServiceCollection AddInfrastructure(this IServiceCollection services)
+        public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
         {
+            IdentityConfiguration.ConfigureIdentityOptions(services, configuration);
+            IdentityConfiguration.ConfigureAuthentication(services, configuration);
+
             // chat
             services.AddScoped<IChatRepository, ChatRepository>();
             services.AddScoped<IChatService, ChatService>();

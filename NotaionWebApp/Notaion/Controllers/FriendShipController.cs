@@ -62,11 +62,11 @@ namespace Notaion.Controllers
             {
                 FriendshipId = f.Id,
                 SenderId = f.SenderId,
-                SenderUserName = f.SenderUser.UserName,
-                SenderAvatar =f.SenderUser.Avatar,
+                SenderUserName = f.SenderUser?.UserName,
+                SenderAvatar =f.SenderUser?.Avatar,
                 ReceiverId = f.ReceiverId,
-                ReceiverUserName =f.ReceiverUser.UserName,
-                ReceiverAvatar =  f.ReceiverUser.Avatar,
+                ReceiverUserName =f.ReceiverUser?.UserName,
+                ReceiverAvatar =  f.ReceiverUser?.Avatar,
                 CreatedAt = f.CreatedAt,
                 UpdatedAt = f.UpdatedAt
             });
@@ -95,6 +95,10 @@ namespace Notaion.Controllers
         public async Task<IActionResult> CheckFriendship(string requesterId, string recipientName)
         {
             var recv = await _userManager.FindByNameAsync(recipientName);
+            if (recv == null)
+            {
+                return NotFound();
+            }
             var friendship = await _context.FriendShip
                 .FirstOrDefaultAsync(f =>
                     (f.SenderId == requesterId && f.ReceiverId == recv.Id) ||
