@@ -111,6 +111,11 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+if (app.Environment.IsDevelopment())
+{
+    throw new Exception("Please use the new Notaion project");
+}
+
 app.MapOpenApi();
 app.MapScalarApiReference();
 
@@ -125,6 +130,7 @@ app.MapControllers();
 
 app.UseCors("AllowAllOrigins");
 app.UseSession();
+
 
 
 app.Run();
