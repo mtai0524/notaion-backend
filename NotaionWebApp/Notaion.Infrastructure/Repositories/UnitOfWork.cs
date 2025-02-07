@@ -10,6 +10,8 @@ namespace Notaion.Infrastructure.Repositories
         private IDbContextTransaction _currentTransaction;
         private readonly Dictionary<Type, object> _repositories;
         public IChatRepository ChatRepository => new ChatRepository(_context);
+        public IItemRepository ItemRepository => new ItemRepository(_context);
+
         public UnitOfWork(ApplicationDbContext context)
         {
             _context = context;

@@ -9,6 +9,7 @@ namespace Notaion.Domain.Interfaces
     public interface IUnitOfWork : IDisposable
     {
         public IChatRepository ChatRepository { get; }
+        public IItemRepository ItemRepository { get; }
 
         IGenericRepository<T> GetGenericRepository <T>() where T : class;
         Task<int> SaveChangeAsync();

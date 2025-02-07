@@ -35,6 +35,11 @@ namespace Notaion.Infrastructure
             services.AddScoped<IChatRepository, ChatRepository>();
             services.AddScoped<IChatService, ChatService>();
 
+            // item
+            services.AddScoped<IItemRepository, ItemRepository>();
+            services.AddScoped<IItemService, ItemService>();
+
+            
             // generic repo
             services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
 

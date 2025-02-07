@@ -25,11 +25,17 @@ namespace Notaion.Infrastructure.Repositories
 
         public async Task<IEnumerable<T>> GetAsync(Expression<Func<T, bool>> predicate)
         {
-            return await _dbSet
-                .Where(predicate)
-                .OrderByDescending(x => EF.Property<DateTime>(x, "SentDate"))
-                .ToListAsync();
+            var query = _dbSet.Where(predicate);
+
+            // Kiểm tra nếu entity có thuộc tính SentDate thì mới OrderBy
+            if (typeof(T).GetProperty("SentDate") != null)
+            {
+                query = query.OrderByDescending(x => EF.Property<DateTime>(x, "SentDate"));
+            }
+
+            return await query.ToListAsync();
         }
+
         public async Task UpdateAsync(T entity) => _dbSet.Update(entity);
 
         public async Task UpdateRangeAsync(IEnumerable<T> entities)

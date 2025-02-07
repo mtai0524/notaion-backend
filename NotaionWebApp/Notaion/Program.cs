@@ -111,10 +111,10 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-if (app.Environment.IsDevelopment())
-{
-    throw new Exception("Please use the new Notaion project");
-}
+// if (app.Environment.IsDevelopment())
+// {
+//     throw new Exception("Please use the new Notaion project");
+// }
 
 app.MapOpenApi();
 app.MapScalarApiReference();

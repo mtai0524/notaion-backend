@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Notaion.Application.Common.Interfaces;
 using Notaion.Application.DTOs.Items;
+using Notaion.Application.Interfaces.Services;
+using Notaion.Application.Services;
 using Notaion.Domain.Entities;
 using Notaion.Infrastructure.Context;
 
@@ -15,26 +17,29 @@ namespace Notaion.API.Controllers
         private readonly IMapper _mapper;
         private readonly ApplicationDbContext _context;
         private readonly ICloudinaryService _cloudinaryService;
-        public ItemsController(ApplicationDbContext context, ICloudinaryService cloudinaryService, IMapper mapper)
+        private readonly IItemService _itemService;
+
+        public ItemsController(ApplicationDbContext context, ICloudinaryService cloudinaryService, IMapper mapper, IItemService itemService)
         {
             _context = context;
             _cloudinaryService = cloudinaryService;
             _mapper = mapper;
+            _itemService = itemService;
         }
 
         // GET: api/Items
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<ItemDTO>>> GetItems()
+        public async Task<ActionResult<List<ItemDTO>>> GetItems()
         {
-            var getListItem = await _context.Items.OrderBy(x => x.Order).Where(x => x.IsHide == false).ToListAsync();
-            return _mapper.Map<List<ItemDTO>>(getListItem);
+            var result = await this._itemService.GetItemsAsync();
+            return Ok(result);
         }
 
         [HttpGet("get-list-items-hidden")]
-        public async Task<ActionResult<IEnumerable<ItemDTO>>> GetItemsHidden()
+        public async Task<ActionResult<List<ItemDTO>>> GetItemsHidden()
         {
-            var getListItemHidden = await _context.Items.OrderBy(x => x.Order).Where(x => x.IsHide == false).ToListAsync();
-            return _mapper.Map<List<ItemDTO>>(getListItemHidden);
+            var result = await this._itemService.GetItemHiddenAsync();
+            return Ok(result);
         }
 
         // POST: api/Items

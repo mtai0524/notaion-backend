@@ -5,19 +5,10 @@ using Microsoft.ML.Data;
 using Notaion.Application.Common.Helpers;
 using System.Globalization;
 using System.Text.RegularExpressions;
+using Notaion.Application.ModelsChatBot;
 
 namespace Notaion.Infrastructure.Repositories
 {
-    // Định nghĩa lớp chứa dữ liệu huấn luyện
-    public class ChatData
-    {
-        [LoadColumn(0)]
-        public string Question { get; set; }
-
-        [LoadColumn(1)]
-        public string Response { get; set; }
-    }
-
     // Lớp huấn luyện mô hình
     public class ChatModelTrainer
     {
@@ -160,11 +151,5 @@ namespace Notaion.Infrastructure.Repositories
                 return "Đã xảy ra lỗi khi dự đoán: " + ex.Message;
             }
         }
-    }
-
-    public class ChatPrediction
-    {
-        public string Question { get; set; }
-        public string PredictedLabel { get; set; }
     }
 }
