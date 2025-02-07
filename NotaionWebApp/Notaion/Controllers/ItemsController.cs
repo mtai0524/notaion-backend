@@ -1,10 +1,6 @@
-﻿using AutoMapper;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Notaion.Application.Common.Interfaces;
-using Notaion.Application.DTOs.Items;
-using Notaion.Application.Interfaces.Services;
-using Notaion.Application.Services;
 using Notaion.Domain.Entities;
 using Notaion.Infrastructure.Context;
 
@@ -14,37 +10,30 @@ namespace Notaion.API.Controllers
     [ApiController]
     public class ItemsController : ControllerBase
     {
-        private readonly IMapper _mapper;
         private readonly ApplicationDbContext _context;
         private readonly ICloudinaryService _cloudinaryService;
-        private readonly IItemService _itemService;
-
-        public ItemsController(ApplicationDbContext context, ICloudinaryService cloudinaryService, IMapper mapper, IItemService itemService)
+        public ItemsController(ApplicationDbContext context, ICloudinaryService cloudinaryService)
         {
             _context = context;
             _cloudinaryService = cloudinaryService;
-            _mapper = mapper;
-            _itemService = itemService;
         }
 
         // GET: api/Items
         [HttpGet]
-        public async Task<ActionResult<List<ItemDTO>>> GetItems()
+        public async Task<ActionResult<IEnumerable<Item>>> GetItems()
         {
-            var result = await this._itemService.GetItemsAsync();
-            return Ok(result);
+            return await _context.Items.OrderBy(x => x.Order).Where(x => x.IsHide == false).ToListAsync();
         }
 
         [HttpGet("get-list-items-hidden")]
-        public async Task<ActionResult<List<ItemDTO>>> GetItemsHidden()
+        public async Task<ActionResult<IEnumerable<Item>>> GetItemsHidden()
         {
-            var result = await this._itemService.GetItemHiddenAsync();
-            return Ok(result);
+            return await _context.Items.OrderBy(x => x.Order).Where(x => x.IsHide == true).ToListAsync();
         }
 
         // POST: api/Items
         [HttpPost]
-        public async Task<ActionResult<ItemDTO>> PostItem(Item item)
+        public async Task<ActionResult<Item>> PostItem(Item item)
         {
             _context.Items.Add(item);
             await _context.SaveChangesAsync();
