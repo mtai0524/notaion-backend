@@ -17,6 +17,8 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.AddServiceDefaults();
+
 
 
 // clean architecture
@@ -104,6 +106,8 @@ builder.Services.AddOpenApiDocument(options =>
 
 
 var app = builder.Build();
+
+app.MapDefaultEndpoints();
 
 if (app.Environment.IsDevelopment())
 {

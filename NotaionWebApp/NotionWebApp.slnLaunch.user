@@ -1,0 +1,15 @@
+[
+  {
+    "Name": "aspire",
+    "Projects": [
+      {
+        "Path": "Notaion\\Notaion.csproj",
+        "Action": "Start"
+      },
+      {
+        "Path": "Notion.Aspire.AppHost\\Notion.Aspire.AppHost.csproj",
+        "Action": "Start"
+      }
+    ]
+  }
+]
