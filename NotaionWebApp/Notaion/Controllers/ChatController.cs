@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿﻿﻿﻿﻿﻿﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
@@ -31,29 +31,35 @@ namespace Notaion.Controllers
             _encryptionService = encryptionService;
         }
 
-        [HttpPost("train")]
-        public async Task<IActionResult> TrainChatbotModel()
-        {
-            try
+            [HttpPost("train")]
+            public async Task<IActionResult> TrainChatbotModel()
             {
-                // Sử dụng đường dẫn cố định đến file responses.csv
-                string filePath = Path.Combine(Directory.GetCurrentDirectory(), "responses.csv");
-
-                // Kiểm tra xem file có tồn tại không
-                if (!System.IO.File.Exists(filePath))
+                try
                 {
-                    return BadRequest($"File không tồn tại tại đường dẫn: {filePath}");
+                    // Sử dụng đường dẫn cố định đến file responses.csv
+                    string filePath = Path.Combine(_configuration["TrainingDataPath"] ?? Directory.GetCurrentDirectory(), "responses.csv");
+
+                    // Kiểm tra xem file có tồn tại không
+                    if (!System.IO.File.Exists(filePath))
+                    {
+                        return BadRequest($"File không tồn tại tại đường dẫn: {filePath}");
+                     // Huấn luyện mô hình từ file
+                    await _chatModelTrainer.TrainModelFromCsvAsync(filePath);
+                    return Ok("Mô hình đã được huấn luyện thành công.");
                 }
-                var modelTrainer = new ChatModelTrainer();
-                // Huấn luyện mô hình từ file
-                await modelTrainer.TrainModelFromCsvAsync(filePath);
-                return Ok("Mô hình đã được huấn luyện thành công.");
+catch (Exception ex)
+                 {
+catch (Exception ex)
+                 {
+                    if (ex is ArgumentException || ex is InvalidOperationException)
+                    {
+                        return BadRequest($"Đã xảy ra lỗi khi huấn luyện mô hình: {ex.Message}");
+                    }
+                    return StatusCode(500, $"Internal server error: {ex.Message}");
+                 }
+                    return StatusCode(500, $"Internal server error: {ex.Message}");
+                 }
             }
-            catch (Exception ex)
-            {
-                return BadRequest($"Đã xảy ra lỗi khi huấn luyện mô hình: {ex.Message}");
-            }
-        }
 
         // Dự đoán câu trả lời từ câu hỏi của người dùng
         [HttpPost("predict")]
@@ -67,10 +73,14 @@ namespace Notaion.Controllers
 
                 return Ok(new { Response = cleanedResponse });
             }
-            catch (Exception ex)
-            {
-                return BadRequest($"Đã xảy ra lỗi trong quá trình dự đoán: {ex.Message}");
-            }
+catch (Exception ex)
+                 {
+                    if (ex is ArgumentException || ex is InvalidOperationException)
+                    {
+                        return BadRequest($"Đã xảy ra lỗi khi huấn luyện mô hình: {ex.Message}");
+                    }
+                    return StatusCode(500, $"Internal server error: {ex.Message}");
+                 }
         }
 
         //[Authorize]
