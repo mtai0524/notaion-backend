@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore.Storage;
+using Microsoft.EntityFrameworkCore.Storage;
+using Notaion.Application.Interfaces.Services;
 using Notaion.Domain.Interfaces;
 using Notaion.Infrastructure.Context;
 
@@ -7,14 +8,18 @@ namespace Notaion.Infrastructure.Repositories
     public class UnitOfWork : IUnitOfWork
     {
         private readonly ApplicationDbContext _context;
+        private readonly IAIService _aiService;
+        private readonly IEncryptionService _encryptionService;
         private IDbContextTransaction _currentTransaction;
         private readonly Dictionary<Type, object> _repositories;
-        public IChatRepository ChatRepository => new ChatRepository(_context);
+        public IChatRepository ChatRepository => new ChatRepository(_context, _aiService, _encryptionService);
         public IItemRepository ItemRepository => new ItemRepository(_context);
 
-        public UnitOfWork(ApplicationDbContext context)
+        public UnitOfWork(ApplicationDbContext context, IAIService aiService, IEncryptionService encryptionService)
         {
             _context = context;
+            _aiService = aiService;
+            _encryptionService = encryptionService;
             _repositories = new Dictionary<Type, object>();
         }
 

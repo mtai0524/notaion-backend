@@ -1,4 +1,5 @@
-﻿using Notaion.Application.Common.Helpers;
+using Notaion.Application.Common.Helpers;
+using Notaion.Application.Interfaces.Services;
 using Notaion.Application.Services;
 using Notaion.Domain.Entities;
 using Notaion.Domain.Interfaces;
@@ -9,13 +10,14 @@ namespace Notaion.Infrastructure.Repositories
     public class ChatRepository : GenericRepository<Chat>, IChatRepository
     {
         private readonly ApplicationDbContext _context;
-        private readonly ChatModelTrainer _chatModelTrainer;
-        private readonly EncryptionService _encryptionService;
-        public ChatRepository(ApplicationDbContext context) : base(context)
+        private readonly IAIService _aiService;
+        private readonly IEncryptionService _encryptionService;
+
+        public ChatRepository(ApplicationDbContext context, IAIService aiService, IEncryptionService encryptionService) : base(context)
         {
             _context = context;
-            _chatModelTrainer = new ChatModelTrainer();
-            _encryptionService = new EncryptionService();
+            _aiService = aiService;
+            _encryptionService = encryptionService;
         }
 
         public async Task<Chat> AddChatbotAsync(Chat chat)
@@ -46,11 +48,11 @@ namespace Notaion.Infrastructure.Repositories
                 userMessage = userMessage.Length > 5 ? userMessage.Substring(5).Trim() : string.Empty;
             }
 
-            if (_chatModelTrainer == null)
+            if (_aiService == null)
             {
-                throw new InvalidOperationException("ChatModelTrainer is not initialized.");
+                throw new InvalidOperationException("AI Service is not initialized.");
             }
-            var response = await _chatModelTrainer.PredictResponseAsync(userMessage);
+            var response = await _aiService.GetAIResponseAsync(userMessage);
 
             return response;
         }

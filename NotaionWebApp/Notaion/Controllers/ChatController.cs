@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿using Microsoft.AspNetCore.Authorization;
+﻿﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
@@ -19,46 +19,22 @@ namespace Notaion.Controllers
         private readonly ApplicationDbContext _context;
         private readonly IHubContext<ChatHub> _hubContext;
         private readonly IChatService chatService;
-        private readonly ChatModelTrainer _chatModelTrainer;
+        private readonly IAIService _aiService;
         private readonly IEncryptionService _encryptionService;
 
-        public ChatController(ApplicationDbContext context, IHubContext<ChatHub> hubContext, IChatService chatService, ChatModelTrainer chatModelTrainer, IEncryptionService encryptionService)
+        public ChatController(ApplicationDbContext context, IHubContext<ChatHub> hubContext, IChatService chatService, IAIService aiService, IEncryptionService encryptionService)
         {
             _context = context;
             this.chatService = chatService;
             _hubContext = hubContext;
-            _chatModelTrainer = chatModelTrainer;
+            _aiService = aiService;
             _encryptionService = encryptionService;
         }
 
             [HttpPost("train")]
             public async Task<IActionResult> TrainChatbotModel()
             {
-                try
-                {
-                    // Sử dụng đường dẫn cố định đến file responses.csv
-                    string filePath = Path.Combine(_configuration["TrainingDataPath"] ?? Directory.GetCurrentDirectory(), "responses.csv");
-
-                    // Kiểm tra xem file có tồn tại không
-                    if (!System.IO.File.Exists(filePath))
-                    {
-                        return BadRequest($"File không tồn tại tại đường dẫn: {filePath}");
-                     // Huấn luyện mô hình từ file
-                    await _chatModelTrainer.TrainModelFromCsvAsync(filePath);
-                    return Ok("Mô hình đã được huấn luyện thành công.");
-                }
-catch (Exception ex)
-                 {
-catch (Exception ex)
-                 {
-                    if (ex is ArgumentException || ex is InvalidOperationException)
-                    {
-                        return BadRequest($"Đã xảy ra lỗi khi huấn luyện mô hình: {ex.Message}");
-                    }
-                    return StatusCode(500, $"Internal server error: {ex.Message}");
-                 }
-                    return StatusCode(500, $"Internal server error: {ex.Message}");
-                 }
+                return Ok("Mô hình hiện đã chuyển sang sử dụng LLM (Gemini), không cần huấn luyện thủ công nữa.");
             }
 
         // Dự đoán câu trả lời từ câu hỏi của người dùng
@@ -67,20 +43,16 @@ catch (Exception ex)
         {
             try
             {
-                var response = await _chatModelTrainer.PredictResponseAsync(userMessage);
+                var response = await _aiService.GetAIResponseAsync(userMessage);
 
-                var cleanedResponse = response.Replace("\"", "").Trim();
+                var cleanedResponse = response.Trim();
 
                 return Ok(new { Response = cleanedResponse });
             }
-catch (Exception ex)
-                 {
-                    if (ex is ArgumentException || ex is InvalidOperationException)
-                    {
-                        return BadRequest($"Đã xảy ra lỗi khi huấn luyện mô hình: {ex.Message}");
-                    }
-                    return StatusCode(500, $"Internal server error: {ex.Message}");
-                 }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
         }
 
         //[Authorize]
@@ -126,7 +98,8 @@ catch (Exception ex)
                     Console.WriteLine($"[ChatBot] Triggered for content: {decryptedContent}");
                     var createdChatbot = await this.chatService.CreateChatbotAsync(chatDto);
                     var decryptedChatbotContent = _encryptionService.Decrypt(createdChatbot.Content);
-
+                    
+                    Console.WriteLine($"[ChatBot] Sending response via Hub: {decryptedChatbotContent}");
                     await _hubContext.Clients.All.SendAsync("ReceiveMessage", createdChatbot.UserName, decryptedChatbotContent);
                 }
 

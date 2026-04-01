@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Notaion.Application.Common.Interfaces;
@@ -51,10 +51,12 @@ namespace Notaion.Infrastructure
 
             services.AddScoped<ICloudinaryService, CloudinaryService>();
 
-            services.AddSingleton<ChatModelTrainer>();
 
             // services
             services.AddSingleton<IEncryptionService, EncryptionService>();
+            
+            // AI Service
+            services.AddHttpClient<IAIService, OpenRouterService>();
 
             return services;
         }
