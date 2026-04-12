@@ -43,21 +43,28 @@ namespace Notaion.Infrastructure.Services
                 // Chuẩn hóa URL một cách an toàn
                 var targetUrl = $"{_baseUrl.TrimEnd('/')}/chat/completions";
 
-                // Sử dụng PostAsync trực tiếp
-                _httpClient.DefaultRequestHeaders.Clear();
-                _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
-                _httpClient.DefaultRequestHeaders.Add("HTTP-Referer", "https://github.com/NotaionApp");
-                _httpClient.DefaultRequestHeaders.Add("X-Title", "Notaion App");
-
-                var response = await _httpClient.PostAsync(targetUrl, content);
-                
-                if (!response.IsSuccessStatusCode)
+                // Sử dụng HttpRequestMessage để đảm bảo thread-safe và tránh lỗi header khi chạy song song
+                using (var request = new HttpRequestMessage(HttpMethod.Post, targetUrl))
                 {
-                    var errorDetails = await response.Content.ReadAsStringAsync();
-                    return $"Lỗi kết nối AI (Mã {response.StatusCode}): {errorDetails}";
-                }
+                    var trimmedKey = _apiKey.Trim();
+                    // Diagnostic logging (first 4 chars only for security)
+                    Console.WriteLine($"[AI-Debug] Using API Key starting with: {trimmedKey.Substring(0, Math.Min(4, trimmedKey.Length))}...");
 
-                var jsonResponse = await response.Content.ReadAsStringAsync();
+                    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", trimmedKey);
+                    request.Headers.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
+                    request.Headers.Add("HTTP-Referer", "https://github.com/NotaionApp");
+                    request.Headers.Add("X-Title", "Notaion App");
+                    request.Content = content;
+
+                    var response = await _httpClient.SendAsync(request);
+                    
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        var errorDetails = await response.Content.ReadAsStringAsync();
+                        return $"Lỗi kết nối AI (Mã {response.StatusCode}): {errorDetails}";
+                    }
+
+                    var jsonResponse = await response.Content.ReadAsStringAsync();
                 using var doc = JsonDocument.Parse(jsonResponse);
                 
                 var root = doc.RootElement;
@@ -72,11 +79,13 @@ namespace Notaion.Infrastructure.Services
                 }
 
                 return "Xin lỗi, tôi không thể xử lý câu hỏi này lúc này.";
+                }
             }
             catch (Exception ex)
             {
                 return $"Đã xảy ra lỗi khi kết nối với AI: {ex.Message}";
             }
         }
+
     }
 }

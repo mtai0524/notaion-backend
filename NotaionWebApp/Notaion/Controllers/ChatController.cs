@@ -1,4 +1,4 @@
-﻿﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
@@ -21,14 +21,16 @@ namespace Notaion.Controllers
         private readonly IChatService chatService;
         private readonly IAIService _aiService;
         private readonly IEncryptionService _encryptionService;
+        private readonly IServiceScopeFactory _scopeFactory;
 
-        public ChatController(ApplicationDbContext context, IHubContext<ChatHub> hubContext, IChatService chatService, IAIService aiService, IEncryptionService encryptionService)
+        public ChatController(ApplicationDbContext context, IHubContext<ChatHub> hubContext, IChatService chatService, IAIService aiService, IEncryptionService encryptionService, IServiceScopeFactory scopeFactory)
         {
             _context = context;
             this.chatService = chatService;
             _hubContext = hubContext;
             _aiService = aiService;
             _encryptionService = encryptionService;
+            _scopeFactory = scopeFactory;
         }
 
             [HttpPost("train")]
@@ -95,13 +97,41 @@ namespace Notaion.Controllers
 
                 if (decryptedContent.Contains("/bot"))
                 {
-                    Console.WriteLine($"[ChatBot] Triggered for content: {decryptedContent}");
-                    var createdChatbot = await this.chatService.CreateChatbotAsync(chatDto);
-                    var decryptedChatbotContent = _encryptionService.Decrypt(createdChatbot.Content);
-                    
-                    Console.WriteLine($"[ChatBot] Sending response via Hub: {decryptedChatbotContent}");
-                    await _hubContext.Clients.All.SendAsync("ReceiveMessage", createdChatbot.UserName, decryptedChatbotContent);
+                    // Chạy task ngầm để gọi AI, tránh block request chính làm mất tính realtime của UI
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            using (var scope = _scopeFactory.CreateScope())
+                            {
+                                var scopedChatService = scope.ServiceProvider.GetRequiredService<IChatService>();
+                                var scopedEncryptionService = scope.ServiceProvider.GetRequiredService<IEncryptionService>();
+                                var scopedHubContext = scope.ServiceProvider.GetRequiredService<IHubContext<ChatHub>>();
+                                
+                                Console.WriteLine($"[ChatBot-Background] AI Task Started: {decryptedContent}");
+
+                                // Clone chatDto để tránh việc content đã bị encrypt thay đổi trong lúc task đang chạy
+                                var botChatDto = new CreateChatDto 
+                                { 
+                                    Content = decryptedContent, 
+                                    UserId = chatDto.UserId,
+                                    UserName = chatDto.UserName
+                                };
+
+                                var createdChatbot = await scopedChatService.CreateChatbotAsync(botChatDto);
+                                var decryptedChatbotContent = scopedEncryptionService.Decrypt(createdChatbot.Content);
+                                
+                                Console.WriteLine($"[ChatBot-Background] Sending response ({createdChatbot.UserName}): {decryptedChatbotContent}");
+                                await scopedHubContext.Clients.All.SendAsync("ReceiveMessage", createdChatbot.UserName, decryptedChatbotContent);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"[ChatBot-Error] Critical background AI process error: {ex.Message}");
+                        }
+                    });
                 }
+
 
                 createdChat.Content = decryptedContent;
 
@@ -118,6 +148,7 @@ namespace Notaion.Controllers
                 return StatusCode(500, $"Internal server error: {ex.Message}");
             }
         }
+
 
 
         [HttpDelete("delete-all-chats")]
