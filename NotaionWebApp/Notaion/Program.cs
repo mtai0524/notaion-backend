@@ -13,7 +13,10 @@ using Notaion.Infrastructure.Identity;
 using Notaion.Infrastructure.Options;
 using NSwag.Generation.Processors.Security;
 using Scalar.AspNetCore;
+using Notaion.Application.Interfaces.Services;
+using Notaion.Infrastructure.Services;
 using System.Text;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -25,6 +28,16 @@ builder.AddServiceDefaults();
 builder.Services.AddApplication();
 builder.Services.AddDbContext(builder.Configuration);
 builder.Services.AddInfrastructure(builder.Configuration);
+
+builder.Services.AddScoped<IFileService, FileService>();
+
+builder.Services.Configure<IISServerOptions>(options => {
+    options.MaxRequestBodySize = 100 * 1024 * 1024;
+});
+builder.WebHost.ConfigureKestrel(options => {
+    options.Limits.MaxRequestBodySize = 100 * 1024 * 1024;
+});
+
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -52,6 +65,15 @@ builder.Services.AddCors(options =>
                 .AllowAnyMethod()
                 .AllowCredentials());
 });
+
+builder.Services.AddCors(options => {
+    options.AddPolicy("AllowReact", policy => {
+        policy.WithOrigins("http://localhost:3000", "http://localhost:2405")
+              .AllowAnyHeader()
+              .AllowAnyMethod();
+    });
+});
+
 
 // cloud
 builder.Services.Configure<CloudinaryOptions>(builder.Configuration.GetSection("Cloudinary"));
@@ -133,6 +155,8 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.UseCors("AllowAllOrigins");
+app.UseCors("AllowReact");
+
 app.UseSession();
 
 
