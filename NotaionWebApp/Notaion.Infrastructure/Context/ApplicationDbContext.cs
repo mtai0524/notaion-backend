@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Notaion.Domain.Entities;
 using Notaion.Domain.Models;
@@ -19,5 +19,6 @@ namespace Notaion.Infrastructure.Context
         public DbSet<ChatPrivate> ChatPrivate { get; set; }
         public DbSet<Notification> Notification{ get; set; }
         public DbSet<FriendShip> FriendShip { get; set; }
+        public DbSet<DailyNote> DailyNotes { get; set; }
     }
 }
