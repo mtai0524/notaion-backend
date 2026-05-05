@@ -34,6 +34,8 @@ namespace Notaion.Domain.Entities
         public bool IsCompleted { get; set; }
         public bool IsMinimized { get; set; }
         public bool HideHeader { get; set; }
+        public int NoteTheme { get; set; } // 0: Dark, 1: Light
+        public string? CustomTextColor { get; set; }
         
         // Linking (Store as comma-separated IDs or JSON)
         public string? LinkedNoteIds { get; set; }
