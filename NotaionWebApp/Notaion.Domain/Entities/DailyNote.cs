@@ -1,5 +1,5 @@
-using System;
 using System.ComponentModel.DataAnnotations;
+using Notaion.Domain.Enums;
 
 namespace Notaion.Domain.Entities
 {
@@ -19,5 +19,23 @@ namespace Notaion.Domain.Entities
         public double Height { get; set; }
         public int ZIndex { get; set; }
         public string? UserId { get; set; }
+
+        // New Custom Properties
+        public string? CustomCategory { get; set; }
+        public string? CustomColor { get; set; }
+        public string? CustomRgb { get; set; }
+        public string? FontSize { get; set; }
+        public double Opacity { get; set; } = 1.0;
+        public NoteBorderStyle BorderStyle { get; set; } = NoteBorderStyle.Solid;
+        public bool Glow { get; set; }
+        public double Blur { get; set; }
+        public NotePattern Pattern { get; set; } = NotePattern.None;
+        public NoteTitleAlign TitleAlign { get; set; } = NoteTitleAlign.Left;
+        public bool IsCompleted { get; set; }
+        public bool IsMinimized { get; set; }
+        public bool HideHeader { get; set; }
+        
+        // Linking (Store as comma-separated IDs or JSON)
+        public string? LinkedNoteIds { get; set; }
     }
 }
