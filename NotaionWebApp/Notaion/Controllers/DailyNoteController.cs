@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Notaion.Domain.Entities;
+using Notaion.Hubs;
 using Notaion.Infrastructure.Context;
 using System.Security.Claims;
 
@@ -11,10 +13,12 @@ namespace Notaion.API.Controllers
     public class DailyNoteController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
+        private readonly IHubContext<DailyNoteHub> _hubContext;
 
-        public DailyNoteController(ApplicationDbContext context)
+        public DailyNoteController(ApplicationDbContext context, IHubContext<DailyNoteHub> hubContext)
         {
             _context = context;
+            _hubContext = hubContext;
         }
 
         private string GetUserId()
@@ -38,9 +42,10 @@ namespace Notaion.API.Controllers
             note.UserId = userId;
 
             var existingNote = await _context.DailyNotes.FirstOrDefaultAsync(n => n.Id == note.Id);
+            bool isNew = existingNote == null;
+
             if (existingNote != null)
             {
-                // Explicitly update values to ensure EF tracks changes
                 _context.Entry(existingNote).CurrentValues.SetValues(note);
                 _context.Entry(existingNote).State = EntityState.Modified;
             }
@@ -50,6 +55,10 @@ namespace Notaion.API.Controllers
             }
 
             await _context.SaveChangesAsync();
+
+            // Notify clients via SignalR
+            await _hubContext.Clients.Group(userId).SendAsync(isNew ? "NoteCreated" : "NoteUpdated", note);
+
             return Ok(note);
         }
 
@@ -73,17 +82,26 @@ namespace Notaion.API.Controllers
             }
 
             await _context.SaveChangesAsync();
+
+            // Notify clients via SignalR about bulk update
+            await _hubContext.Clients.Group(userId).SendAsync("NotesBulkUpdated", notes);
+
             return Ok();
         }
 
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteNote(string id)
         {
+            var userId = GetUserId();
             var note = await _context.DailyNotes.FirstOrDefaultAsync(n => n.Id == id);
             if (note == null) return NotFound();
 
             _context.DailyNotes.Remove(note);
             await _context.SaveChangesAsync();
+
+            // Notify clients via SignalR
+            await _hubContext.Clients.Group(userId).SendAsync("NoteDeleted", id);
+
             return Ok();
         }
     }

@@ -147,6 +147,7 @@ app.MapScalarApiReference();
 
 
 app.MapHub<ChatHub>("/chatHub");
+app.MapHub<DailyNoteHub>("/dailyNoteHub");
 
 app.UseHttpsRedirection();
 
