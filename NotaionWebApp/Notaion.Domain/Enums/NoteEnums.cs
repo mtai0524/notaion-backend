@@ -4,7 +4,9 @@ namespace Notaion.Domain.Enums
     {
         None,
         Dots,
-        Stripes
+        Stripes,
+        Grid,
+        Cross
     }
 
     public enum NoteTitleAlign

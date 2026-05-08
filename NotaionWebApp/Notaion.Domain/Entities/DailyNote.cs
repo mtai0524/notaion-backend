@@ -36,6 +36,16 @@ namespace Notaion.Domain.Entities
         public bool HideHeader { get; set; }
         public int NoteTheme { get; set; } // 0: Dark, 1: Light
         public string? CustomTextColor { get; set; }
+        public string? CustomTextColorHex { get; set; }
+        public string? FontFamily { get; set; }
+        public double LineHeight { get; set; } = 1.6;
+        public double GlowRadius { get; set; } = 20;
+        public double BlurIntensity { get; set; } = 5;
+        public double Rotation { get; set; }
+        public bool Highlighted { get; set; }
+        public bool Compact { get; set; }
+        public bool Locked { get; set; }
+        public bool Pinned { get; set; }
         public string? DrawingData { get; set; } // Base64 string for sketches
         
         // Linking (Store as comma-separated IDs or JSON)
