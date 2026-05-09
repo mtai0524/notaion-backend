@@ -1,4 +1,4 @@
-﻿using CloudinaryDotNet.Actions;
+using CloudinaryDotNet.Actions;
 using CloudinaryDotNet;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -9,11 +9,13 @@ using Notaion.Models;
 using Notaion.Infrastructure.Context;
 using Microsoft.AspNetCore.Http.HttpResults;
 using System.Net;
+using System.Security.Claims;
 using Microsoft.AspNetCore.SignalR;
 using Notaion.Hubs;
 using Notaion.Domain.Entities;
 using Notaion.Domain.Models;
 using Notaion.Domain.Interfaces;
+using System.Security.Claims;
 
 namespace WebAPI.Controllers
 {
@@ -25,14 +27,17 @@ namespace WebAPI.Controllers
         private readonly UserManager<User> _userManager;
         private readonly ApplicationDbContext _context;
         private readonly IHubContext<ChatHub> _hubContext;
+        private readonly SignInManager<User> _signInManager;
+        private readonly IConfiguration _configuration;
 
-        public AccountsController(IAccountRepository repo, UserManager<User> userManager, ApplicationDbContext context, IHubContext<ChatHub> hubContext)
+        public AccountsController(IAccountRepository repo, UserManager<User> userManager, ApplicationDbContext context, IHubContext<ChatHub> hubContext, SignInManager<User> signInManager, IConfiguration configuration)
         {
             accountRepo = repo;
             _userManager = userManager;
             _context = context;
             _hubContext = hubContext;
-
+            _signInManager = signInManager;
+            _configuration = configuration;
         }
 
         [HttpGet("get-users-demo-jenkins-ngrok-github-webhook-hehe")]
@@ -185,6 +190,77 @@ namespace WebAPI.Controllers
             await _hubContext.Clients.All.SendAsync("ReceiveOnlineUsers", new[] { userInfo });
 
             return Ok(new { token = result });
+        }
+
+        [HttpGet("discord-login")]
+        public IActionResult DiscordLogin()
+        {
+            var properties = _signInManager.ConfigureExternalAuthenticationProperties("Discord", Url.Action("DiscordCallback"));
+            return Challenge(properties, "Discord");
+        }
+
+        [HttpGet("discord-callback")]
+        public async Task<IActionResult> DiscordCallback()
+        {
+            var info = await _signInManager.GetExternalLoginInfoAsync();
+            if (info == null)
+            {
+                return Redirect($"{_configuration["FrontendUrl"] ?? "http://localhost:2405"}/login?error=discord_failed");
+            }
+
+            var result = await _signInManager.ExternalLoginSignInAsync(info.LoginProvider, info.ProviderKey, isPersistent: false);
+
+            User user = null;
+            if (result.Succeeded)
+            {
+                user = await _userManager.FindByLoginAsync(info.LoginProvider, info.ProviderKey);
+            }
+            else
+            {
+                // User doesn't exist, create one
+                var email = info.Principal.FindFirstValue(ClaimTypes.Email);
+                var name = info.Principal.FindFirstValue(ClaimTypes.Name) ?? info.Principal.FindFirstValue("urn:discord:username") ?? "DiscordUser";
+                var discordId = info.Principal.FindFirstValue(ClaimTypes.NameIdentifier);
+
+                // Nếu không có email (hiếm), tạo một email giả dựa trên Discord ID
+                if (string.IsNullOrEmpty(email))
+                {
+                    email = $"{discordId}@discord.com";
+                }
+                
+                user = await _userManager.FindByEmailAsync(email);
+                if (user == null)
+                {
+                    // Lấy Avatar URL từ Discord
+                    var avatarUrl = info.Principal.FindFirstValue("urn:discord:avatar:url");
+                    
+                    user = new User
+                    {
+                        UserName = name,
+                        Email = email,
+                        EmailConfirmed = true,
+                        Avatar = avatarUrl ?? "https://cdn.discordapp.com/embed/avatars/0.png"
+                    };
+                    var createResult = await _userManager.CreateAsync(user);
+                    if (!createResult.Succeeded)
+                    {
+                         // Nếu trùng UserName, thử thêm Discord ID vào sau
+                         user.UserName = $"{name}_{discordId.Substring(0, 4)}";
+                         createResult = await _userManager.CreateAsync(user);
+                         if (!createResult.Succeeded)
+                            return Redirect($"{_configuration["FrontendUrl"] ?? "http://localhost:2405"}/login?error=create_failed");
+                    }
+                }
+                await _userManager.AddLoginAsync(user, info);
+            }
+
+            var token = accountRepo.GenerateJwtToken(user);
+            
+            // Thông báo User online qua SignalR
+            var userInfo = new { userId = user.Id, userName = user.UserName, avatar = user.Avatar };
+            await _hubContext.Clients.All.SendAsync("ReceiveOnlineUsers", new[] { userInfo });
+
+            return Redirect($"{_configuration["FrontendUrl"] ?? "http://localhost:2405"}/login-success?token={token}");
         }
 
 

@@ -16,6 +16,7 @@ using Scalar.AspNetCore;
 using Notaion.Application.Interfaces.Services;
 using Notaion.Infrastructure.Services;
 using System.Text;
+using AspNet.Security.OAuth.Discord;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -90,11 +91,21 @@ builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSession();
 builder.Services.AddControllersWithViews();
 
-builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+builder.Services.AddAuthentication(options => 
+        {
+            options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+        })
         .AddCookie(options =>
         {
             options.LoginPath = "/Account/Login";
             options.LogoutPath = "/Account/Logout";
+        })
+        .AddDiscord(options =>
+        {
+            options.ClientId = builder.Configuration["Authentication:Discord:AppId"] ?? "";
+            options.ClientSecret = builder.Configuration["Authentication:Discord:AppSecret"] ?? "";
+            options.SaveTokens = true;
+            options.Scope.Add("email");
         });
 builder.Services.AddAuthorization();
 builder.Services.AddSignalR().AddHubOptions<ChatHub>(options =>
