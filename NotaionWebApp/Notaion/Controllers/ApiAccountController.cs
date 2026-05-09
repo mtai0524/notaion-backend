@@ -211,47 +211,59 @@ namespace WebAPI.Controllers
             var result = await _signInManager.ExternalLoginSignInAsync(info.LoginProvider, info.ProviderKey, isPersistent: false);
 
             User user = null;
+            // Lấy thông tin từ Discord
+            var email = info.Principal.FindFirstValue(ClaimTypes.Email);
+            var name = info.Principal.FindFirstValue(ClaimTypes.Name) ?? info.Principal.FindFirstValue("urn:discord:username") ?? "DiscordUser";
+            var discordId = info.Principal.FindFirstValue(ClaimTypes.NameIdentifier);
+            var avatarHash = info.Principal.FindFirstValue("urn:discord:avatar:hash");
+            var avatarUrl = info.Principal.FindFirstValue("urn:discord:avatar:url");
+
+            if (string.IsNullOrEmpty(avatarUrl) && !string.IsNullOrEmpty(avatarHash))
+            {
+                avatarUrl = $"https://cdn.discordapp.com/avatars/{discordId}/{avatarHash}.png";
+            }
+            if (string.IsNullOrEmpty(avatarUrl))
+            {
+                avatarUrl = "https://cdn.discordapp.com/embed/avatars/0.png";
+            }
+
             if (result.Succeeded)
             {
                 user = await _userManager.FindByLoginAsync(info.LoginProvider, info.ProviderKey);
+                // Cập nhật Avatar nếu có thay đổi
+                if (user != null && user.Avatar != avatarUrl)
+                {
+                    user.Avatar = avatarUrl;
+                    await _userManager.UpdateAsync(user);
+                }
             }
             else
             {
-                // User doesn't exist, create one
-                var email = info.Principal.FindFirstValue(ClaimTypes.Email);
-                var name = info.Principal.FindFirstValue(ClaimTypes.Name) ?? info.Principal.FindFirstValue("urn:discord:username") ?? "DiscordUser";
-                var discordId = info.Principal.FindFirstValue(ClaimTypes.NameIdentifier);
-
-                // Nếu không có email (hiếm), tạo một email giả dựa trên Discord ID
-                if (string.IsNullOrEmpty(email))
-                {
-                    email = $"{discordId}@discord.com";
-                }
+                // Nếu không có email, tạo email giả
+                if (string.IsNullOrEmpty(email)) email = $"{discordId}@discord.com";
                 
                 user = await _userManager.FindByEmailAsync(email);
                 if (user == null)
                 {
-                    // Lấy Avatar URL từ Discord
-                    var avatarUrl = info.Principal.FindFirstValue("urn:discord:avatar:url");
-                    
                     user = new User
                     {
                         UserName = name,
                         Email = email,
                         EmailConfirmed = true,
-                        Avatar = avatarUrl ?? "https://cdn.discordapp.com/embed/avatars/0.png"
+                        Avatar = avatarUrl
                     };
                     var createResult = await _userManager.CreateAsync(user);
                     if (!createResult.Succeeded)
                     {
-                         // Nếu trùng UserName, thử thêm Discord ID vào sau
                          user.UserName = $"{name}_{discordId.Substring(0, 4)}";
-                         createResult = await _userManager.CreateAsync(user);
-                         if (!createResult.Succeeded)
-                            return Redirect($"{_configuration["FrontendUrl"] ?? "http://localhost:2405"}/login?error=create_failed");
+                         await _userManager.CreateAsync(user);
                     }
                 }
                 await _userManager.AddLoginAsync(user, info);
+                
+                // Đảm bảo avatar được lưu đúng
+                user.Avatar = avatarUrl;
+                await _userManager.UpdateAsync(user);
             }
 
             var token = accountRepo.GenerateJwtToken(user);
