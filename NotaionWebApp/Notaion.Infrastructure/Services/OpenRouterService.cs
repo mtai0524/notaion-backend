@@ -37,12 +37,30 @@ namespace Notaion.Infrastructure.Services
 
             try
             {
+                // Đọc bộ nhớ từ file (Context)
+                string aiMemory = "";
+                string memoryPath = Path.Combine(Directory.GetCurrentDirectory(), "ai_memory.txt");
+                if (File.Exists(memoryPath))
+                {
+                    aiMemory = await File.ReadAllTextAsync(memoryPath);
+                }
+
                 var requestBody = new
                 {
                     model = _model,
                     messages = new[]
                     {
-                        new { role = "system", content = "Bạn là một trợ lý ảo thông minh tên là Notion AI. Hãy trả lời câu hỏi của người dùng một cách thân thiện và chính xác." },
+                        new { 
+                            role = "system", 
+                            content = $@"Bạn là Notion AI - một trợ lý thông minh. 
+                            QUY TẮC QUAN TRỌNG: Bạn có một bộ nhớ cá nhân dưới đây. Nếu câu hỏi của người dùng liên quan đến thông tin trong bộ nhớ này, bạn PHẢI ưu tiên sử dụng nó để trả lời.
+
+                            [BỘ NHỚ CÁ NHÂN]:
+                            {aiMemory}
+                            [KẾT THÚC BỘ NHỚ]
+
+                            Hãy trả lời một cách tự nhiên, thân thiện và chính xác dựa trên kiến thức trên." 
+                        },
                         new { role = "user", content = userMessage }
                     }
                 };

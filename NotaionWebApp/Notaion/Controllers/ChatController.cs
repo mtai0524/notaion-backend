@@ -178,6 +178,28 @@ namespace Notaion.Controllers
             await _context.SaveChangesAsync();
             return Ok();
         }
+        [HttpPost("update-ai-memory")]
+        public async Task<IActionResult> UpdateAiMemory([FromBody] CreateChatDto memoryDto)
+        {
+            if (memoryDto.UserName != "minhtai")
+            {
+                return Forbid("Chỉ người dùng minhtai mới có quyền ghi vào bộ nhớ AI.");
+            }
+
+            try
+            {
+                string memoryPath = Path.Combine(Directory.GetCurrentDirectory(), "ai_memory.txt");
+                
+                // Ghi thêm nội dung vào cuối file (Append) kèm theo xuống dòng
+                await System.IO.File.AppendAllTextAsync(memoryPath, memoryDto.Content + Environment.NewLine);
+                
+                return Ok(new { message = "Bộ nhớ AI đã được cập nhật thành công." });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Lỗi khi ghi file bộ nhớ: {ex.Message}");
+            }
+        }
     }
 }
 
