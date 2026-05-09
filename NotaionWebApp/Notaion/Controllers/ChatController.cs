@@ -97,7 +97,6 @@ namespace Notaion.Controllers
 
                 if (decryptedContent.Contains("/bot"))
                 {
-                    // Chạy task ngầm để gọi AI, tránh block request chính làm mất tính realtime của UI
                     _ = Task.Run(async () =>
                     {
                         try
@@ -106,11 +105,8 @@ namespace Notaion.Controllers
                             {
                                 var scopedChatService = scope.ServiceProvider.GetRequiredService<IChatService>();
                                 var scopedEncryptionService = scope.ServiceProvider.GetRequiredService<IEncryptionService>();
-                                var scopedHubContext = scope.ServiceProvider.GetRequiredService<IHubContext<ChatHub>>();
                                 
-                                Console.WriteLine($"[ChatBot-Background] AI Task Started: {decryptedContent}");
-
-                                // Clone chatDto để tránh việc content đã bị encrypt thay đổi trong lúc task đang chạy
+                                // Tạo một DTO mới cho bot
                                 var botChatDto = new CreateChatDto 
                                 { 
                                     Content = decryptedContent, 
@@ -121,13 +117,14 @@ namespace Notaion.Controllers
                                 var createdChatbot = await scopedChatService.CreateChatbotAsync(botChatDto);
                                 var decryptedChatbotContent = scopedEncryptionService.Decrypt(createdChatbot.Content);
                                 
-                                Console.WriteLine($"[ChatBot-Background] Sending response ({createdChatbot.UserName}): {decryptedChatbotContent}");
-                                await scopedHubContext.Clients.All.SendAsync("ReceiveMessage", createdChatbot.UserName, decryptedChatbotContent);
+                                // Gửi qua SignalR bằng HubContext chính của Controller
+                                await _hubContext.Clients.All.SendAsync("ReceiveMessage", createdChatbot.UserName, decryptedChatbotContent);
+                                Console.WriteLine($"[AI-Success] Sent SignalR message: {createdChatbot.UserName}");
                             }
                         }
                         catch (Exception ex)
                         {
-                            Console.WriteLine($"[ChatBot-Error] Critical background AI process error: {ex.Message}");
+                            Console.WriteLine($"[AI-Error] {ex.Message}");
                         }
                     });
                 }
