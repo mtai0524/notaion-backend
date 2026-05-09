@@ -18,13 +18,23 @@ namespace Notaion.Infrastructure.Services
         {
             _httpClient = httpClient;
             _configuration = configuration;
-            _apiKey = _configuration["OpenRouter:ApiKey"] ?? throw new ArgumentNullException("OpenRouter:ApiKey is missing");
+            _apiKey = _configuration["OpenRouter:ApiKey"] ?? "";
             _baseUrl = _configuration["OpenRouter:BaseUrl"] ?? "https://openrouter.ai/api/v1/";
             _model = _configuration["OpenRouter:Model"] ?? "google/gemini-2.0-flash-exp:free";
+            
+            if (string.IsNullOrWhiteSpace(_apiKey))
+            {
+                Console.WriteLine("[AI-Config] Warning: OpenRouter:ApiKey is missing in configuration.");
+            }
         }
 
         public async Task<string> GetAIResponseAsync(string userMessage)
         {
+            if (string.IsNullOrWhiteSpace(_apiKey))
+            {
+                return "Lỗi: OpenRouter API Key chưa được cấu hình trong appsettings.json.";
+            }
+
             try
             {
                 var requestBody = new
@@ -47,45 +57,64 @@ namespace Notaion.Infrastructure.Services
                 using (var request = new HttpRequestMessage(HttpMethod.Post, targetUrl))
                 {
                     var trimmedKey = _apiKey.Trim();
-                    // Diagnostic logging (first 4 chars only for security)
-                    Console.WriteLine($"[AI-Debug] Using API Key starting with: {trimmedKey.Substring(0, Math.Min(4, trimmedKey.Length))}...");
+                    
+                    // Diagnostic logging
+                    Console.WriteLine($"[AI-Debug] Target URL: {targetUrl}");
+                    Console.WriteLine($"[AI-Debug] Using API Key (length: {trimmedKey.Length}) starting with: {trimmedKey.Substring(0, Math.Min(8, trimmedKey.Length))}...");
 
+                    // Thiết lập Authorization header
+                    // Một số môi trường có thể gặp vấn đề với AuthenticationHeaderValue, thử dùng TryAddWithoutValidation nếu cần
                     request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", trimmedKey);
-                    request.Headers.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
-                    request.Headers.Add("HTTP-Referer", "https://github.com/NotaionApp");
-                    request.Headers.Add("X-Title", "Notaion App");
+                    request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+                    
+                    // Các header đặc thù của OpenRouter
+                    // Sử dụng cả Referer và HTTP-Referer để đảm bảo tương thích tối đa
+                    request.Headers.TryAddWithoutValidation("Referer", "https://github.com/NotaionApp");
+                    request.Headers.TryAddWithoutValidation("HTTP-Referer", "https://github.com/NotaionApp");
+                    request.Headers.TryAddWithoutValidation("X-Title", "Notaion App");
+                    request.Headers.TryAddWithoutValidation("User-Agent", "NotaionApp/1.0");
+                    
                     request.Content = content;
 
                     var response = await _httpClient.SendAsync(request);
-                    
+                    var responseContent = await response.Content.ReadAsStringAsync();
+
                     if (!response.IsSuccessStatusCode)
                     {
-                        var errorDetails = await response.Content.ReadAsStringAsync();
-                        return $"Lỗi kết nối AI (Mã {response.StatusCode}): {errorDetails}";
+                        // OpenRouter trả về JSON chi tiết lỗi, chúng ta cần log lại để debug
+                        Console.WriteLine($"[AI-Error] Status: {response.StatusCode} ({(int)response.StatusCode})");
+                        Console.WriteLine($"[AI-Error] Response: {responseContent}");
+                        
+                        // Kiểm tra nếu là lỗi 401 Unauthorized
+                        if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+                        {
+                            return $"Lỗi xác thực OpenRouter (401): Vui lòng kiểm tra lại API Key trong appsettings.json. Chi tiết: {responseContent}";
+                        }
+                        
+                        return $"Lỗi kết nối AI (Mã {response.StatusCode}): {responseContent}";
                     }
 
-                    var jsonResponse = await response.Content.ReadAsStringAsync();
-                using var doc = JsonDocument.Parse(jsonResponse);
-                
-                var root = doc.RootElement;
-                if (root.TryGetProperty("choices", out var choices) && choices.GetArrayLength() > 0)
-                {
-                    var firstChoice = choices[0];
-                    if (firstChoice.TryGetProperty("message", out var message) && message.TryGetProperty("content", out var aiContent))
+                    using var doc = JsonDocument.Parse(responseContent);
+                    var root = doc.RootElement;
+                    
+                    if (root.TryGetProperty("choices", out var choices) && choices.GetArrayLength() > 0)
                     {
-                        var result = aiContent.GetString() ?? "Xin lỗi, tôi không nhận được phản hồi từ AI.";
-                        return result.Trim(); // Làm sạch kết quả
+                        var firstChoice = choices[0];
+                        if (firstChoice.TryGetProperty("message", out var message) && message.TryGetProperty("content", out var aiContent))
+                        {
+                            var result = aiContent.GetString() ?? "Xin lỗi, tôi không nhận được phản hồi từ AI.";
+                            return result.Trim();
+                        }
                     }
-                }
 
-                return "Xin lỗi, tôi không thể xử lý câu hỏi này lúc này.";
+                    return "Xin lỗi, tôi không thể xử lý câu hỏi này lúc này.";
                 }
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"[AI-Exception] {ex.Message}");
                 return $"Đã xảy ra lỗi khi kết nối với AI: {ex.Message}";
             }
         }
-
     }
 }
