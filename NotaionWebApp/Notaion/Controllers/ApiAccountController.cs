@@ -272,21 +272,13 @@ namespace WebAPI.Controllers
             var userInfo = new { userId = user.Id, userName = user.UserName, avatar = user.Avatar };
             await _hubContext.Clients.All.SendAsync("ReceiveOnlineUsers", new[] { userInfo });
 
-            // Lấy FrontendUrl từ cấu hình hoặc mặc định là localhost
-            var frontendUrl = _configuration["FrontendUrl"];
+            // Lấy FrontendUrl từ cấu hình
+            var frontendUrl = _configuration["FrontendUrl"]?.TrimEnd('/');
             
-            // Nếu không có cấu hình, ta thử lấy từ Origin của Request (dành cho bản deploy)
+            // Nếu không có cấu hình hoặc vẫn là placeholder, dùng fallback an toàn
             if (string.IsNullOrEmpty(frontendUrl) || frontendUrl.Contains("your-frontend-domain"))
             {
-                 var origin = Request.Headers["Referer"].ToString();
-                 if (!string.IsNullOrEmpty(origin))
-                 {
-                     frontendUrl = new Uri(origin).GetLeftPart(UriPartial.Authority);
-                 }
-                 else
-                 {
-                     frontendUrl = "http://localhost:2405"; // Fallback cuối cùng
-                 }
+                 frontendUrl = "https://notaion.onrender.com"; 
             }
 
             return Redirect($"{frontendUrl}/login-success?token={token}");
