@@ -160,6 +160,11 @@ app.MapScalarApiReference();
 app.MapHub<ChatHub>("/chatHub");
 app.MapHub<DailyNoteHub>("/dailyNoteHub");
 
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedFor | Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedProto
+});
+
 app.UseHttpsRedirection();
 
 app.UseAuthentication();
@@ -170,8 +175,6 @@ app.UseCors("AllowAllOrigins");
 app.UseCors("AllowReact");
 
 app.UseSession();
-
-
 
 app.Run();
 

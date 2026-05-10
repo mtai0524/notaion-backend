@@ -211,7 +211,9 @@ namespace WebAPI.Controllers
             var info = await _signInManager.GetExternalLoginInfoAsync();
             if (info == null)
             {
-                return Redirect($"{_configuration["FrontendUrl"] ?? "http://localhost:2405"}/login?error=discord_failed");
+                // Ghi log lỗi để bạn kiểm tra trong console của server
+                Console.WriteLine("Discord login failed: info is null. Check ClientId/Secret and Redirect URIs.");
+                return Redirect($"{_configuration["FrontendUrl"] ?? "https://notaion.onrender.com"}/login?error=discord_info_null");
             }
 
             var result = await _signInManager.ExternalLoginSignInAsync(info.LoginProvider, info.ProviderKey, isPersistent: false);
