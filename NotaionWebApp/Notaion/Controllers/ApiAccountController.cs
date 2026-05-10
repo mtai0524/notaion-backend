@@ -195,6 +195,12 @@ namespace WebAPI.Controllers
         [HttpGet("discord-login")]
         public IActionResult DiscordLogin()
         {
+            var clientId = _configuration["Authentication:Discord:AppId"];
+            if (string.IsNullOrEmpty(clientId) || clientId == "YOUR_DISCORD_CLIENT_ID")
+            {
+                return BadRequest("Discord Authentication is not configured on the server.");
+            }
+
             var properties = _signInManager.ConfigureExternalAuthenticationProperties("Discord", Url.Action("DiscordCallback"));
             return Challenge(properties, "Discord");
         }
