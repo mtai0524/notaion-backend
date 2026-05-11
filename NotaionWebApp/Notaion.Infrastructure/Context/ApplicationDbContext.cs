@@ -20,5 +20,6 @@ namespace Notaion.Infrastructure.Context
         public DbSet<Notification> Notification{ get; set; }
         public DbSet<FriendShip> FriendShip { get; set; }
         public DbSet<DailyNote> DailyNotes { get; set; }
+        public DbSet<PageVisit> PageVisits { get; set; }
     }
 }
