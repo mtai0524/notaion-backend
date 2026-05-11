@@ -35,6 +35,15 @@ namespace Notaion.API.Controllers
                 .ToListAsync();
         }
 
+        [HttpGet("all")]
+        public async Task<ActionResult<IEnumerable<DailyNote>>> GetAllNotes()
+        {
+            var userId = GetUserId();
+            return await _context.DailyNotes
+                .Where(n => n.UserId == userId)
+                .ToListAsync();
+        }
+
         [HttpPost]
         public async Task<ActionResult<DailyNote>> UpsertNote(DailyNote note)
         {
