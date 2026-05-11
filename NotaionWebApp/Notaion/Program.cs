@@ -167,12 +167,11 @@ app.UseForwardedHeaders(new ForwardedHeadersOptions
 
 app.UseHttpsRedirection();
 
+app.UseCors("AllowAllOrigins");
+
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
-
-app.UseCors("AllowAllOrigins");
-app.UseCors("AllowReact");
 
 app.UseSession();
 

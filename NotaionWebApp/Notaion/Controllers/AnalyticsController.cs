@@ -19,7 +19,18 @@ namespace Notaion.API.Controllers
         [HttpPost("track")]
         public async Task<IActionResult> TrackVisit([FromBody] TrackVisitDto dto)
         {
-            var vietnamTimeZone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
+            TimeZoneInfo vietnamTimeZone;
+            try 
+            {
+                // Windows ID
+                vietnamTimeZone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
+            }
+            catch (TimeZoneNotFoundException)
+            {
+                // Linux/IANA ID
+                vietnamTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Asia/Ho_Chi_Minh");
+            }
+            
             var vietnamTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, vietnamTimeZone);
 
             var visit = new PageVisit
