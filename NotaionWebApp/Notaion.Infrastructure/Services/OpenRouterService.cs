@@ -39,7 +39,8 @@ namespace Notaion.Infrastructure.Services
             {
                 // Đọc bộ nhớ từ file (Context)
                 string aiMemory = "";
-                string memoryPath = Path.Combine(Directory.GetCurrentDirectory(), "ai_memory.txt");
+                
+                string memoryPath = Path.Combine(AppContext.BaseDirectory, "ai_memory.txt");
                 if (File.Exists(memoryPath))
                 {
                     aiMemory = await File.ReadAllTextAsync(memoryPath);
