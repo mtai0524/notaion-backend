@@ -48,6 +48,9 @@ namespace Notaion.Domain.Entities
         public bool Pinned { get; set; }
         public string? DrawingData { get; set; } // Base64 string for sketches
         
+        // Deletion/Hiding
+        public bool IsDeleted { get; set; }
+
         // Linking (Store as comma-separated IDs or JSON)
         public string? LinkedNoteIds { get; set; }
     }

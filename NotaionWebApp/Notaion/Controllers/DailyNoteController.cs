@@ -31,7 +31,7 @@ namespace Notaion.API.Controllers
         {
             var userId = GetUserId();
             return await _context.DailyNotes
-                .Where(n => n.Date == date && n.UserId == userId)
+                .Where(n => n.Date == date && n.UserId == userId && !n.IsDeleted)
                 .ToListAsync();
         }
 
@@ -40,7 +40,7 @@ namespace Notaion.API.Controllers
         {
             var userId = GetUserId();
             return await _context.DailyNotes
-                .Where(n => n.UserId == userId)
+                .Where(n => n.UserId == userId && !n.IsDeleted)
                 .ToListAsync();
         }
 
@@ -105,7 +105,8 @@ namespace Notaion.API.Controllers
             var note = await _context.DailyNotes.FirstOrDefaultAsync(n => n.Id == id);
             if (note == null) return NotFound();
 
-            _context.DailyNotes.Remove(note);
+            note.IsDeleted = true;
+            _context.DailyNotes.Update(note);
             await _context.SaveChangesAsync();
 
             // Notify clients via SignalR
