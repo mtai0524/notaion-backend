@@ -43,19 +43,19 @@ namespace Notaion.Infrastructure.Services
 
             try
             {
-                // Đọc bộ nhớ từ Database (Context)
+                // Đọc TOÀN BỘ bộ nhớ từ Database
                 string aiMemory = "";
-                
                 using (var scope = _scopeFactory.CreateScope())
                 {
                     var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-                    var memoryEntity = await dbContext.AIMemories
-                        .OrderByDescending(m => m.UpdatedAt)
-                        .FirstOrDefaultAsync();
+                    var memories = await dbContext.AIMemories
+                        .OrderBy(m => m.UpdatedAt) // Sắp xếp theo thứ tự thời gian tăng dần
+                        .ToListAsync();
                     
-                    if (memoryEntity != null)
+                    if (memories.Any())
                     {
-                        aiMemory = memoryEntity.Content;
+                        aiMemory = string.Join(Environment.NewLine + "---" + Environment.NewLine, 
+                            memories.Select(m => m.Content));
                     }
                 }
 
@@ -154,26 +154,14 @@ namespace Notaion.Infrastructure.Services
             using (var scope = _scopeFactory.CreateScope())
             {
                 var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-                var memoryEntity = await dbContext.AIMemories.FirstOrDefaultAsync();
-
-                if (memoryEntity == null)
+                
+                var memoryEntity = new AIMemory
                 {
-                    memoryEntity = new AIMemory
-                    {
-                        Content = content,
-                        UpdatedAt = DateTime.UtcNow
-                    };
-                    dbContext.AIMemories.Add(memoryEntity);
-                }
-                else
-                {
-                    // Append new content or replace? 
-                    // User said "dạy cho AI", usually means appending.
-                    memoryEntity.Content += Environment.NewLine + content;
-                    memoryEntity.UpdatedAt = DateTime.UtcNow;
-                    dbContext.AIMemories.Update(memoryEntity);
-                }
+                    Content = content,
+                    UpdatedAt = DateTime.UtcNow
+                };
 
+                dbContext.AIMemories.Add(memoryEntity);
                 await dbContext.SaveChangesAsync();
             }
         }
