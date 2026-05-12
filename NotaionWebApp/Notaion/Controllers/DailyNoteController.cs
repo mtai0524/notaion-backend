@@ -112,11 +112,12 @@ namespace Notaion.API.Controllers
         public async Task<IActionResult> DeleteNote(string id)
         {
             var userId = GetUserId();
-            var note = await _context.DailyNotes.FirstOrDefaultAsync(n => n.Id == id);
+            var note = await _context.DailyNotes.FirstOrDefaultAsync(n => n.Id == id && n.UserId == userId);
             if (note == null) return NotFound();
 
             note.IsDeleted = true;
-            _context.DailyNotes.Update(note);
+            _context.Entry(note).Property(x => x.IsDeleted).IsModified = true;
+            
             await _context.SaveChangesAsync();
 
             // Notify clients via SignalR
