@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
+using Notaion.Application.Common.Interfaces;
 using Notaion.Application.Interfaces.Services;
 using Notaion.Domain.Models;
 using System;
@@ -19,10 +20,12 @@ namespace Notaion.Infrastructure.Services
     {
         private readonly string _uploadPath;
         private readonly IServiceScopeFactory _scopeFactory;
+        private readonly ICloudinaryService _cloudinaryService;
 
-        public FileService(IConfiguration configuration, IServiceScopeFactory scopeFactory)
+        public FileService(IConfiguration configuration, IServiceScopeFactory scopeFactory, ICloudinaryService cloudinaryService)
         {
             _scopeFactory = scopeFactory;
+            _cloudinaryService = cloudinaryService;
             _uploadPath = configuration["FileStorage:UploadPath"] ?? "Uploads";
             if (!Path.IsPathRooted(_uploadPath))
             {
@@ -67,6 +70,31 @@ namespace Notaion.Infrastructure.Services
             return metadata;
         }
 
+        public async Task<FileMetadata> UploadCloudAsync(IFormFile file)
+        {
+            var uploadResult = await _cloudinaryService.UploadFileAsync(file);
+
+            var metadata = new FileMetadata
+            {
+                Id = Guid.NewGuid(),
+                OriginalName = file.FileName,
+                SavedName = uploadResult.PublicId,
+                ContentType = file.ContentType,
+                SizeInBytes = file.Length,
+                UploadedAt = DateTime.UtcNow,
+                CloudUrl = uploadResult.Url
+            };
+
+            using (var scope = _scopeFactory.CreateScope())
+            {
+                var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                dbContext.FileMetadatas.Add(metadata);
+                await dbContext.SaveChangesAsync();
+            }
+
+            return metadata;
+        }
+
         public async Task<List<FileMetadata>> GetAllAsync()
         {
             using (var scope = _scopeFactory.CreateScope())
@@ -90,6 +118,11 @@ namespace Notaion.Infrastructure.Services
                 throw new FileNotFoundException("File metadata not found.");
             }
 
+            if (!string.IsNullOrEmpty(metadata.CloudUrl))
+            {
+                throw new InvalidOperationException("File này lưu trên Cloudinary, hãy download trực tiếp từ CloudUrl.");
+            }
+
             var filePath = Path.Combine(_uploadPath, savedName);
             if (!File.Exists(filePath))
             {
@@ -109,10 +142,23 @@ namespace Notaion.Infrastructure.Services
 
                 if (metadata == null) return false;
 
-                var filePath = Path.Combine(_uploadPath, savedName);
-                if (File.Exists(filePath))
+                if (!string.IsNullOrEmpty(metadata.CloudUrl))
                 {
-                    File.Delete(filePath);
+                    var resourceType = (metadata.ContentType ?? string.Empty).StartsWith("image/", StringComparison.OrdinalIgnoreCase)
+                        ? "image"
+                        : (metadata.ContentType ?? string.Empty).StartsWith("video/", StringComparison.OrdinalIgnoreCase)
+                            ? "video"
+                            : "raw";
+
+                    await _cloudinaryService.DeleteFileAsync(metadata.SavedName, resourceType);
+                }
+                else
+                {
+                    var filePath = Path.Combine(_uploadPath, savedName);
+                    if (File.Exists(filePath))
+                    {
+                        File.Delete(filePath);
+                    }
                 }
 
                 dbContext.FileMetadatas.Remove(metadata);

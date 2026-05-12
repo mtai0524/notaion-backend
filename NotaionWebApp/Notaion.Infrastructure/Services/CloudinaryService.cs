@@ -1,4 +1,4 @@
-﻿using CloudinaryDotNet;
+using CloudinaryDotNet;
 using CloudinaryDotNet.Actions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -61,6 +61,68 @@ namespace Notaion.Infrastructure.Services
                 Console.WriteLine("Error uploading image to Cloudinary: " + ex.Message);
                 return null;
             }
+        }
+
+        [RequestSizeLimit(1024 * 1024 * 100)]
+        public async Task<CloudinaryUploadResult> UploadFileAsync(IFormFile file)
+        {
+            if (file == null || file.Length == 0)
+            {
+                throw new ArgumentException("File rỗng hoặc không tồn tại.");
+            }
+
+            var contentType = file.ContentType ?? string.Empty;
+            using var stream = file.OpenReadStream();
+            var description = new FileDescription(file.FileName, stream);
+
+            RawUploadResult uploadResult;
+            string resourceType;
+
+            if (contentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
+            {
+                resourceType = "image";
+                uploadResult = await _cloudinary.UploadAsync(new ImageUploadParams { File = description });
+            }
+            else if (contentType.StartsWith("video/", StringComparison.OrdinalIgnoreCase))
+            {
+                resourceType = "video";
+                uploadResult = await _cloudinary.UploadAsync(new VideoUploadParams { File = description });
+            }
+            else
+            {
+                resourceType = "raw";
+                uploadResult = await _cloudinary.UploadAsync(new RawUploadParams { File = description });
+            }
+
+            if (uploadResult.StatusCode != System.Net.HttpStatusCode.OK)
+            {
+                throw new Exception($"Cloudinary upload thất bại: {uploadResult.Error?.Message}");
+            }
+
+            return new CloudinaryUploadResult
+            {
+                Url = uploadResult.SecureUrl.AbsoluteUri,
+                PublicId = uploadResult.PublicId,
+                ResourceType = resourceType
+            };
+        }
+
+        public async Task<bool> DeleteFileAsync(string publicId, string resourceType)
+        {
+            if (string.IsNullOrWhiteSpace(publicId)) return false;
+
+            var deletionParams = new DeletionParams(publicId)
+            {
+                ResourceType = resourceType?.ToLowerInvariant() switch
+                {
+                    "video" => ResourceType.Video,
+                    "raw" => ResourceType.Raw,
+                    _ => ResourceType.Image
+                }
+            };
+
+            var result = await _cloudinary.DestroyAsync(deletionParams);
+            return result.Result == "ok";
         }
     }
 }

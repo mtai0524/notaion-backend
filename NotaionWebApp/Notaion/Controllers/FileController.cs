@@ -34,6 +34,21 @@ namespace Notaion.Controllers
             return Ok(results);
         }
 
+        [HttpPost("upload/cloudinary")]
+        public async Task<ActionResult<List<FileMetadata>>> UploadToCloudinary(List<IFormFile> files)
+        {
+            var results = new List<FileMetadata>();
+            foreach (var file in files)
+            {
+                if (file.Length > 0)
+                {
+                    var metadata = await _fileService.UploadCloudAsync(file);
+                    results.Add(metadata);
+                }
+            }
+            return Ok(results);
+        }
+
         [HttpGet]
         public async Task<ActionResult<List<FileMetadata>>> GetAll()
         {
