@@ -27,21 +27,31 @@ namespace Notaion.API.Controllers
         }
 
         [HttpGet("{date}")]
-        public async Task<ActionResult<IEnumerable<DailyNote>>> GetNotesByDate(string date)
+        public async Task<ActionResult<IEnumerable<DailyNote>>> GetNotesByDate(string date, [FromQuery] bool includeDeleted = false)
         {
             var userId = GetUserId();
-            return await _context.DailyNotes
-                .Where(n => n.Date == date && n.UserId == userId && !n.IsDeleted)
-                .ToListAsync();
+            var query = _context.DailyNotes.Where(n => n.Date == date && n.UserId == userId);
+            
+            if (!includeDeleted)
+            {
+                query = query.Where(n => !n.IsDeleted);
+            }
+            
+            return await query.ToListAsync();
         }
 
         [HttpGet("all")]
-        public async Task<ActionResult<IEnumerable<DailyNote>>> GetAllNotes()
+        public async Task<ActionResult<IEnumerable<DailyNote>>> GetAllNotes([FromQuery] bool includeDeleted = false)
         {
             var userId = GetUserId();
-            return await _context.DailyNotes
-                .Where(n => n.UserId == userId && !n.IsDeleted)
-                .ToListAsync();
+            var query = _context.DailyNotes.Where(n => n.UserId == userId);
+
+            if (!includeDeleted)
+            {
+                query = query.Where(n => !n.IsDeleted);
+            }
+
+            return await query.ToListAsync();
         }
 
         [HttpPost]
