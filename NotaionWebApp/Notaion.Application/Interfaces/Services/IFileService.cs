@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Http;
-using Notaion.Domain.Models;
+using Notaion.Domain.Entities;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;

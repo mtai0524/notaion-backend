@@ -3,6 +3,9 @@ using Notaion.Application.Interfaces.Services;
 using System.Text;
 using System.Text.Json;
 using System.Net.Http.Headers;
+using Microsoft.Extensions.DependencyInjection;
+using Notaion.Infrastructure.Context;
+using Microsoft.EntityFrameworkCore;
 
 namespace Notaion.Infrastructure.Services
 {
@@ -13,11 +16,13 @@ namespace Notaion.Infrastructure.Services
         private readonly string _apiKey;
         private readonly string _baseUrl;
         private readonly string _model;
+        private readonly IServiceScopeFactory _scopeFactory;
 
-        public OpenRouterService(HttpClient httpClient, IConfiguration configuration)
+        public OpenRouterService(HttpClient httpClient, IConfiguration configuration, IServiceScopeFactory scopeFactory)
         {
             _httpClient = httpClient;
             _configuration = configuration;
+            _scopeFactory = scopeFactory;
             _apiKey = _configuration["OpenRouter:ApiKey"] ?? "";
             _baseUrl = _configuration["OpenRouter:BaseUrl"] ?? "https://openrouter.ai/api/v1/";
             _model = _configuration["OpenRouter:Model"] ?? "google/gemini-2.0-flash-exp:free";
@@ -37,13 +42,20 @@ namespace Notaion.Infrastructure.Services
 
             try
             {
-                // Đọc bộ nhớ từ file (Context)
+                // Đọc bộ nhớ từ Database (Context)
                 string aiMemory = "";
                 
-                string memoryPath = Path.Combine(AppContext.BaseDirectory, "ai_memory.txt");
-                if (File.Exists(memoryPath))
+                using (var scope = _scopeFactory.CreateScope())
                 {
-                    aiMemory = await File.ReadAllTextAsync(memoryPath);
+                    var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                    var memoryEntity = await dbContext.AIMemories
+                        .OrderByDescending(m => m.UpdatedAt)
+                        .FirstOrDefaultAsync();
+                    
+                    if (memoryEntity != null)
+                    {
+                        aiMemory = memoryEntity.Content;
+                    }
                 }
 
                 var requestBody = new

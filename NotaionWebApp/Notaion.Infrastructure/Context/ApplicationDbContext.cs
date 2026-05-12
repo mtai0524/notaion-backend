@@ -21,5 +21,7 @@ namespace Notaion.Infrastructure.Context
         public DbSet<FriendShip> FriendShip { get; set; }
         public DbSet<DailyNote> DailyNotes { get; set; }
         public DbSet<PageVisit> PageVisits { get; set; }
+        public DbSet<AIMemory> AIMemories { get; set; }
+        public DbSet<FileMetadata> FileMetadatas { get; set; }
     }
 }

@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Notaion.Application.Interfaces.Services;
-using Notaion.Domain.Models;
+using Notaion.Domain.Entities;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;

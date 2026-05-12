@@ -8,17 +8,21 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Notaion.Domain.Entities;
+using Notaion.Infrastructure.Context;
 
 namespace Notaion.Infrastructure.Services
 {
     public class FileService : IFileService
     {
         private readonly string _uploadPath;
-        private readonly string _metadataPath;
-        private static readonly object _lock = new object();
+        private readonly IServiceScopeFactory _scopeFactory;
 
-        public FileService(IConfiguration configuration)
+        public FileService(IConfiguration configuration, IServiceScopeFactory scopeFactory)
         {
+            _scopeFactory = scopeFactory;
             _uploadPath = configuration["FileStorage:UploadPath"] ?? "Uploads";
             if (!Path.IsPathRooted(_uploadPath))
             {
@@ -29,8 +33,6 @@ namespace Notaion.Infrastructure.Services
             {
                 Directory.CreateDirectory(_uploadPath);
             }
-
-            _metadataPath = Path.Combine(_uploadPath, "metadata.json");
         }
 
         public async Task<FileMetadata> UploadAsync(IFormFile file)
@@ -55,20 +57,33 @@ namespace Notaion.Infrastructure.Services
                 UploadedAt = DateTime.UtcNow
             };
 
-            SaveMetadata(metadata);
+            using (var scope = _scopeFactory.CreateScope())
+            {
+                var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                dbContext.FileMetadatas.Add(metadata);
+                await dbContext.SaveChangesAsync();
+            }
 
             return metadata;
         }
 
         public async Task<List<FileMetadata>> GetAllAsync()
         {
-            return LoadAllMetadata();
+            using (var scope = _scopeFactory.CreateScope())
+            {
+                var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                return await dbContext.FileMetadatas.OrderByDescending(m => m.UploadedAt).ToListAsync();
+            }
         }
 
         public async Task<(Stream stream, string contentType, string originalName)> DownloadAsync(string savedName)
         {
-            var allMetadata = LoadAllMetadata();
-            var metadata = allMetadata.FirstOrDefault(m => m.SavedName == savedName);
+            FileMetadata metadata;
+            using (var scope = _scopeFactory.CreateScope())
+            {
+                var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                metadata = await dbContext.FileMetadatas.FirstOrDefaultAsync(m => m.SavedName == savedName);
+            }
 
             if (metadata == null)
             {
@@ -87,51 +102,24 @@ namespace Notaion.Infrastructure.Services
 
         public async Task<bool> DeleteAsync(string savedName)
         {
-            var allMetadata = LoadAllMetadata();
-            var metadata = allMetadata.FirstOrDefault(m => m.SavedName == savedName);
-
-            if (metadata == null) return false;
-
-            var filePath = Path.Combine(_uploadPath, savedName);
-            if (File.Exists(filePath))
+            using (var scope = _scopeFactory.CreateScope())
             {
-                File.Delete(filePath);
-            }
+                var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                var metadata = await dbContext.FileMetadatas.FirstOrDefaultAsync(m => m.SavedName == savedName);
 
-            allMetadata.RemoveAll(m => m.SavedName == savedName);
-            SaveAllMetadata(allMetadata);
+                if (metadata == null) return false;
+
+                var filePath = Path.Combine(_uploadPath, savedName);
+                if (File.Exists(filePath))
+                {
+                    File.Delete(filePath);
+                }
+
+                dbContext.FileMetadatas.Remove(metadata);
+                await dbContext.SaveChangesAsync();
+            }
 
             return true;
-        }
-
-        private List<FileMetadata> LoadAllMetadata()
-        {
-            lock (_lock)
-            {
-                if (!File.Exists(_metadataPath)) return new List<FileMetadata>();
-
-                var json = File.ReadAllText(_metadataPath);
-                return JsonSerializer.Deserialize<List<FileMetadata>>(json) ?? new List<FileMetadata>();
-            }
-        }
-
-        private void SaveMetadata(FileMetadata metadata)
-        {
-            lock (_lock)
-            {
-                var allMetadata = LoadAllMetadata();
-                allMetadata.Add(metadata);
-                SaveAllMetadata(allMetadata);
-            }
-        }
-
-        private void SaveAllMetadata(List<FileMetadata> allMetadata)
-        {
-            lock (_lock)
-            {
-                var json = JsonSerializer.Serialize(allMetadata, new JsonSerializerOptions { WriteIndented = true });
-                File.WriteAllText(_metadataPath, json);
-            }
         }
     }
 }
