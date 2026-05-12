@@ -188,16 +188,12 @@ namespace Notaion.Controllers
 
             try
             {
-                string memoryPath = Path.Combine(Directory.GetCurrentDirectory(), "ai_memory.txt");
-                
-                // Ghi thêm nội dung vào cuối file (Append) kèm theo xuống dòng
-                await System.IO.File.AppendAllTextAsync(memoryPath, memoryDto.Content + Environment.NewLine);
-                
-                return Ok(new { message = "Bộ nhớ AI đã được cập nhật thành công." });
+                await _aiService.UpdateAIMemoryAsync(memoryDto.Content);
+                return Ok(new { message = "Bộ nhớ AI đã được cập nhật thành công vào Database." });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, $"Lỗi khi ghi file bộ nhớ: {ex.Message}");
+                return StatusCode(500, $"Lỗi khi cập nhật bộ nhớ AI: {ex.Message}");
             }
         }
     }

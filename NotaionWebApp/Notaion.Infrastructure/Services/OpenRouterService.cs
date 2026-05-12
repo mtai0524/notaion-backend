@@ -6,6 +6,7 @@ using System.Net.Http.Headers;
 using Microsoft.Extensions.DependencyInjection;
 using Notaion.Infrastructure.Context;
 using Microsoft.EntityFrameworkCore;
+using Notaion.Domain.Entities;
 
 namespace Notaion.Infrastructure.Services
 {
@@ -145,6 +146,35 @@ namespace Notaion.Infrastructure.Services
             {
                 Console.WriteLine($"[AI-Exception] {ex.Message}");
                 return $"Đã xảy ra lỗi khi kết nối với AI: {ex.Message}";
+            }
+        }
+
+        public async Task UpdateAIMemoryAsync(string content)
+        {
+            using (var scope = _scopeFactory.CreateScope())
+            {
+                var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                var memoryEntity = await dbContext.AIMemories.FirstOrDefaultAsync();
+
+                if (memoryEntity == null)
+                {
+                    memoryEntity = new AIMemory
+                    {
+                        Content = content,
+                        UpdatedAt = DateTime.UtcNow
+                    };
+                    dbContext.AIMemories.Add(memoryEntity);
+                }
+                else
+                {
+                    // Append new content or replace? 
+                    // User said "dạy cho AI", usually means appending.
+                    memoryEntity.Content += Environment.NewLine + content;
+                    memoryEntity.UpdatedAt = DateTime.UtcNow;
+                    dbContext.AIMemories.Update(memoryEntity);
+                }
+
+                await dbContext.SaveChangesAsync();
             }
         }
     }
