@@ -58,6 +58,7 @@ msbuild.wrn
 /WebGame/.vs/NotionWebApp/DesignTimeBuild
 /WebGame/TicTacToe/Properties/PublishProfiles
 /NotaionWebApp/.vs
+/NotaionWebApp/Notaion/Properties/PublishProfiles
 
 appsettings.Production.json
 appsettings.Development.json
