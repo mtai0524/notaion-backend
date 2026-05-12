@@ -86,6 +86,17 @@ namespace Notaion.Application.Services
         }
 
 
+        public async Task<List<ParticipantDto>> GetParticipantsAsync()
+        {
+            var rows = await _unitOfWork.ChatRepository.GetParticipantsAsync();
+            return rows.Select(r => new ParticipantDto
+            {
+                UserName = r.UserName,
+                MessageCount = r.MessageCount,
+                LastMessageAt = r.LastMessageAt
+            }).ToList();
+        }
+
         public async Task<int> HideChatAllAsync()
         {
             await _unitOfWork.BeginTransactionAsync();

@@ -24,6 +24,22 @@ namespace Notaion.Infrastructure.Repositories
             _encryptionService = encryptionService;
         }
 
+        public async Task<List<ChatParticipantSummary>> GetParticipantsAsync()
+        {
+            return await _context.Chat
+                .AsNoTracking()
+                .Where(c => c.Hide == false && c.UserName != null && c.UserName != "")
+                .GroupBy(c => c.UserName!)
+                .Select(g => new ChatParticipantSummary
+                {
+                    UserName = g.Key,
+                    MessageCount = g.Count(),
+                    LastMessageAt = g.Max(c => c.SentDate)
+                })
+                .OrderByDescending(p => p.LastMessageAt)
+                .ToListAsync();
+        }
+
         public async Task<Chat> AddChatbotAsync(Chat chat)
         {
             var botResponse = await GetChatbotResponseAsync(chat.Content);

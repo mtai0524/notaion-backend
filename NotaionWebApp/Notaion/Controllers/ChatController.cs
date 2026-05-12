@@ -73,6 +73,13 @@ namespace Notaion.Controllers
             return Ok(await this.chatService.GetChatsHiddenAsync());
         }
 
+        [HttpGet("participants")]
+        public async Task<IActionResult> GetParticipants()
+        {
+            var participants = await this.chatService.GetParticipantsAsync();
+            return Ok(participants);
+        }
+
         [HttpPost("add-chat")]
         public async Task<IActionResult> AddChat([FromBody] CreateChatDto chatDto)
         {
