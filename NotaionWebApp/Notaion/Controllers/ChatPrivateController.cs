@@ -2,12 +2,14 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using Notaion.Application.Interfaces.Services;
 using Notaion.Infrastructure.Context;
 using Notaion.Domain.Entities;
 using Notaion.Domain.Models;
 using Notaion.Hubs;
 using Notaion.Models;
 using System.Security.Claims;
+using System.Security.Cryptography;
 
 namespace Notaion.API.Controllers
 {
@@ -17,11 +19,31 @@ namespace Notaion.API.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly IHubContext<ChatHub> _hubContext;
+        private readonly IEncryptionService _encryptionService;
 
-        public ChatPrivateController(ApplicationDbContext context, IHubContext<ChatHub> hubContext)
+        public ChatPrivateController(ApplicationDbContext context, IHubContext<ChatHub> hubContext, IEncryptionService encryptionService)
         {
             _context = context;
             _hubContext = hubContext;
+            _encryptionService = encryptionService;
+        }
+
+        private string SafeDecrypt(string content)
+        {
+            if (string.IsNullOrEmpty(content)) return content;
+            try
+            {
+                return _encryptionService.Decrypt(content);
+            }
+            catch (CryptographicException)
+            {
+                return "[Unable to decrypt message]";
+            }
+            catch (FormatException)
+            {
+                // Not Base64 — treat as legacy plaintext
+                return content;
+            }
         }
 
         public class PrivateChatWithUsers
@@ -53,7 +75,7 @@ namespace Notaion.API.Controllers
 
             var chatsWithUsers = chats.Select(chat => new PrivateChatWithUsers
             {
-                Content = chat.Content,
+                Content = SafeDecrypt(chat.Content),
                 SentDate = chat.SentDate.HasValue ? chat.SentDate.Value : DateTime.MinValue,
                 Sender = chat.Sender,
                 Receiver = chat.Receiver,
@@ -68,12 +90,20 @@ namespace Notaion.API.Controllers
         [HttpPost("add-chat-private")]
         public async Task<IActionResult> AddChat([FromBody] ChatPrivateViewModel chatViewModel)
         {
+            if (chatViewModel == null || string.IsNullOrEmpty(chatViewModel.Content))
+            {
+                return BadRequest("Invalid chat message.");
+            }
+
+            var plainContent = chatViewModel.Content;
+            var encryptedContent = _encryptionService.Encrypt(plainContent);
+
             var vietnamTimeZone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
             var vietnamTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, vietnamTimeZone);
             var chatPrivate = new ChatPrivate
             {
                 Id = Guid.NewGuid().ToString(),
-                Content = chatViewModel.Content,
+                Content = encryptedContent,
                 SentDate = vietnamTime,
                 Sender = chatViewModel.SenderId,
                 Receiver = chatViewModel.ReceiverId,
@@ -88,8 +118,9 @@ namespace Notaion.API.Controllers
             _context.ChatPrivate.Add(chatPrivate);
             await _context.SaveChangesAsync();
 
+            // Broadcast plaintext so receivers don't need an encryption key.
             await _hubContext.Clients.All.SendAsync(
-                "ReceiveMessagePrivate", chatViewModel.SenderId, chatViewModel.ReceiverId, chatViewModel.Content, currentUser.UserName, friendUser.UserName);
+                "ReceiveMessagePrivate", chatViewModel.SenderId, chatViewModel.ReceiverId, plainContent, currentUser.UserName, friendUser.UserName);
 
             return Ok();
         }
