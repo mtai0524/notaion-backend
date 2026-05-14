@@ -1,8 +1,10 @@
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Caching.Memory;
 using Notaion.Application.Interfaces.Services;
 using System.Text;
 using System.Text.Json;
 using System.Net.Http.Headers;
+using System.Security.Cryptography;
 using Microsoft.Extensions.DependencyInjection;
 using Notaion.Infrastructure.Context;
 using Microsoft.EntityFrameworkCore;
@@ -15,6 +17,11 @@ namespace Notaion.Infrastructure.Services
         private const int MaxMemoryEntries = 50;
         private const int MaxMemoryChars = 4000;
         private const int MaxHistoryTurns = 12;
+        private const int MaxConcurrentRequests = 3;
+        private static readonly TimeSpan CacheTtl = TimeSpan.FromMinutes(30);
+
+        // Giới hạn số request song song đến OpenRouter
+        private static readonly SemaphoreSlim _semaphore = new(MaxConcurrentRequests, MaxConcurrentRequests);
 
         private static readonly string SystemPromptTemplate = @"You are **Notaion AI**, the in-app assistant for the Notaion note-taking & collaboration platform. Your job is to give clear, accurate, useful answers and to make the user's work faster.
 
@@ -43,19 +50,25 @@ A `[MEMORY]` block below contains facts the user has taught you. Treat them as a
 
         private readonly HttpClient _httpClient;
         private readonly IConfiguration _configuration;
+        private readonly IMemoryCache _cache;
         private readonly string _apiKey;
         private readonly string _baseUrl;
-        private readonly string _model;
+        private readonly string _primaryModel;
+        private readonly IReadOnlyList<string> _allModels;
         private readonly IServiceScopeFactory _scopeFactory;
 
-        public OpenRouterService(HttpClient httpClient, IConfiguration configuration, IServiceScopeFactory scopeFactory)
+        public OpenRouterService(HttpClient httpClient, IConfiguration configuration, IMemoryCache cache, IServiceScopeFactory scopeFactory)
         {
             _httpClient = httpClient;
             _configuration = configuration;
+            _cache = cache;
             _scopeFactory = scopeFactory;
             _apiKey = _configuration["OpenRouter:ApiKey"] ?? "";
             _baseUrl = _configuration["OpenRouter:BaseUrl"] ?? "https://openrouter.ai/api/v1/";
-            _model = _configuration["OpenRouter:Model"] ?? "google/gemini-2.0-flash-exp:free";
+            _primaryModel = _configuration["OpenRouter:Model"] ?? "google/gemini-2.0-flash-exp:free";
+
+            var fallbacks = _configuration.GetSection("OpenRouter:FallbackModels").Get<string[]>() ?? [];
+            _allModels = new[] { _primaryModel }.Concat(fallbacks).Distinct().ToList();
 
             if (string.IsNullOrWhiteSpace(_apiKey))
             {
@@ -84,8 +97,22 @@ A `[MEMORY]` block below contains facts the user has taught you. Treat them as a
                 return "Không có nội dung để phản hồi.";
             }
 
+            var cacheKey = BuildCacheKey(conversation);
+            if (_cache.TryGetValue(cacheKey, out string? cached) && cached != null)
+            {
+                Console.WriteLine("[AI-Cache] Hit");
+                return cached;
+            }
+
+            await _semaphore.WaitAsync();
             try
             {
+                // Double-check sau khi vào semaphore tránh race condition
+                if (_cache.TryGetValue(cacheKey, out cached) && cached != null)
+                {
+                    return cached;
+                }
+
                 var memoryBlock = await BuildMemoryBlockAsync();
                 var systemPrompt = SystemPromptTemplate.Replace("{MEMORY_BLOCK}", memoryBlock);
 
@@ -104,10 +131,69 @@ A `[MEMORY]` block below contains facts the user has taught you. Treat them as a
                 };
                 messages.AddRange(trimmed);
 
+                var result = await TryAllModelsAsync(messages);
+
+                if (result != null && !result.StartsWith("Lỗi") && !result.StartsWith("AI đang"))
+                {
+                    _cache.Set(cacheKey, result, CacheTtl);
+                }
+
+                return result ?? "Xin lỗi, tôi không thể xử lý câu hỏi này lúc này.";
+            }
+            finally
+            {
+                _semaphore.Release();
+            }
+        }
+
+        private async Task<string?> TryAllModelsAsync(List<object> messages)
+        {
+            var retryDelays = new[] { TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(3) };
+
+            foreach (var model in _allModels)
+            {
+                for (int attempt = 0; attempt <= retryDelays.Length; attempt++)
+                {
+                    if (attempt > 0)
+                    {
+                        Console.WriteLine($"[AI-Retry] Model={model} attempt={attempt} delay={retryDelays[attempt - 1].TotalSeconds}s");
+                        await Task.Delay(retryDelays[attempt - 1]);
+                    }
+
+                    var (success, isRateLimited, response) = await CallApiAsync(model, messages);
+
+                    if (success)
+                    {
+                        if (model != _primaryModel)
+                        {
+                            Console.WriteLine($"[AI-Fallback] Used model: {model}");
+                        }
+                        return response;
+                    }
+
+                    if (!isRateLimited)
+                    {
+                        // Lỗi không phải 429 → không retry model này nữa
+                        return response;
+                    }
+
+                    // 429 → thử lại sau delay (nếu còn lượt)
+                }
+
+                Console.WriteLine($"[AI-RateLimit] Model {model} exhausted, trying next fallback.");
+            }
+
+            return "AI đang quá tải, vui lòng thử lại sau vài giây.";
+        }
+
+        private async Task<(bool success, bool isRateLimited, string? response)> CallApiAsync(string model, List<object> messages)
+        {
+            try
+            {
                 var requestBody = new
                 {
-                    model = _model,
-                    messages = messages,
+                    model,
+                    messages,
                     temperature = 0.7,
                     top_p = 0.9,
                     max_tokens = 2048,
@@ -120,34 +206,33 @@ A `[MEMORY]` block below contains facts the user has taught you. Treat them as a
                 var targetUrl = $"{_baseUrl.TrimEnd('/')}/chat/completions";
 
                 using var request = new HttpRequestMessage(HttpMethod.Post, targetUrl);
-                var trimmedKey = _apiKey.Trim();
-
-                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", trimmedKey);
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey.Trim());
                 request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-                request.Headers.TryAddWithoutValidation("Referer", "https://github.com/NotaionApp");
                 request.Headers.TryAddWithoutValidation("HTTP-Referer", "https://github.com/NotaionApp");
                 request.Headers.TryAddWithoutValidation("X-Title", "Notaion App");
                 request.Headers.TryAddWithoutValidation("User-Agent", "NotaionApp/1.0");
                 request.Content = content;
 
-                var response = await _httpClient.SendAsync(request);
-                var responseContent = await response.Content.ReadAsStringAsync();
+                var httpResponse = await _httpClient.SendAsync(request);
+                var responseContent = await httpResponse.Content.ReadAsStringAsync();
 
-                if (!response.IsSuccessStatusCode)
+                if (httpResponse.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
                 {
-                    Console.WriteLine($"[AI-Error] Status: {response.StatusCode} ({(int)response.StatusCode})");
-                    Console.WriteLine($"[AI-Error] Response: {responseContent}");
+                    Console.WriteLine($"[AI-429] Model={model}");
+                    return (false, true, null);
+                }
 
-                    var friendly = ExtractErrorMessage(responseContent);
-                    if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
-                    {
-                        return $"Lỗi xác thực OpenRouter (401): Vui lòng kiểm tra lại API Key. {friendly}";
-                    }
-                    if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
-                    {
-                        return $"AI đang quá tải (429). Bạn thử lại sau ít giây nhé. {friendly}";
-                    }
-                    return $"Lỗi kết nối AI (Mã {(int)response.StatusCode}): {friendly}";
+                if (httpResponse.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+                {
+                    var msg = ExtractErrorMessage(responseContent);
+                    return (false, false, $"Lỗi xác thực OpenRouter (401): Vui lòng kiểm tra lại API Key. {msg}");
+                }
+
+                if (!httpResponse.IsSuccessStatusCode)
+                {
+                    Console.WriteLine($"[AI-Error] Status={httpResponse.StatusCode} Model={model} Body={responseContent.Substring(0, Math.Min(200, responseContent.Length))}");
+                    var msg = ExtractErrorMessage(responseContent);
+                    return (false, false, $"Lỗi kết nối AI (Mã {(int)httpResponse.StatusCode}): {msg}");
                 }
 
                 using var doc = JsonDocument.Parse(responseContent);
@@ -158,16 +243,17 @@ A `[MEMORY]` block below contains facts the user has taught you. Treat them as a
                     var firstChoice = choices[0];
                     if (firstChoice.TryGetProperty("message", out var message) && message.TryGetProperty("content", out var aiContent))
                     {
-                        return (aiContent.GetString() ?? "Xin lỗi, tôi không nhận được phản hồi từ AI.").Trim();
+                        var text = (aiContent.GetString() ?? "").Trim();
+                        return (true, false, text);
                     }
                 }
 
-                return "Xin lỗi, tôi không thể xử lý câu hỏi này lúc này.";
+                return (false, false, "Xin lỗi, tôi không thể xử lý câu hỏi này lúc này.");
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"[AI-Exception] {ex.Message}");
-                return $"Đã xảy ra lỗi khi kết nối với AI: {ex.Message}";
+                return (false, false, $"Đã xảy ra lỗi khi kết nối với AI: {ex.Message}");
             }
         }
 
@@ -218,6 +304,18 @@ A `[MEMORY]` block below contains facts the user has taught you. Treat them as a
                 Console.WriteLine($"[AI-Memory] Failed to load memories: {ex.Message}");
                 return "[MEMORY] (unavailable)";
             }
+        }
+
+        // Cache key dựa trên nội dung tin nhắn cuối cùng của user
+        private static string BuildCacheKey(IReadOnlyList<ChatTurn> conversation)
+        {
+            var lastUser = conversation
+                .Where(t => t.Role == ChatRole.User)
+                .LastOrDefault();
+
+            var raw = (lastUser?.Content ?? "").Trim().ToLowerInvariant();
+            var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(raw)));
+            return $"ai_resp_{hash}";
         }
 
         private static string ExtractErrorMessage(string responseContent)

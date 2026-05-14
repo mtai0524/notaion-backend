@@ -56,6 +56,7 @@ namespace Notaion.Infrastructure
             services.AddSingleton<IEncryptionService, EncryptionService>();
             
             // AI Service
+            services.AddMemoryCache();
             services.AddHttpClient<IAIService, OpenRouterService>();
 
             return services;
