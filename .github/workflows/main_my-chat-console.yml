@@ -1,35 +1,33 @@
-name: Build and deploy to MonsterASP v2
-
-on:
-  push:
-    branches:
-      - main
-  workflow_dispatch:
+name: Build, publish and deploy to MonsterASP.NET
+on: [push]
 
 jobs:
-  build-and-deploy:
+  build_and_deploy:
     runs-on: windows-latest
-
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up .NET Core
+      - name: Setup .NET 8
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '9.x'
+          dotnet-version: 8.0
+          
+      - name: Install dependencies
+        run: dotnet restore
+        
+      - name: Build
+        run: dotnet build --configuration Release --no-restore
 
       - name: Publish
-        run: dotnet publish NotaionWebApp/Notaion/Notaion.csproj -c Release -o ./publish
+        run: dotnet publish --configuration Release --output ./publish --runtime win-x86 
+        
+      - name: Test with .NET
+        run: dotnet test
 
-      - name: Deploy via Web Deploy
-        run: |
-          msdeploy -verb:sync `
-            -source:contentPath="${{ github.workspace }}\publish" `
-            -dest:contentPath="site8642",`
-              computerName="https://site8642.siteasp.net/msdeploy.axd",`
-              userName="site8642",`
-              password="fS=3#5XaWe4_",`
-              authtype="Basic",`
-              includeAcls="False" `
-            -allowUntrusted `
-            -enableRule:AppOffline
+      - name: Deploy to MonsterASP.NET via WebDeploy
+        uses: rasmusbuchholdt/simply-web-deploy@2.1.0
+        with:
+          website-name: ${{ secrets.WEBSITE_NAME }}
+          server-computer-name: ${{ secrets.SERVER_COMPUTER_NAME }}
+          server-username: ${{ secrets.SERVER_USERNAME }}
+          server-password: ${{ secrets.SERVER_PASSWORD }}
