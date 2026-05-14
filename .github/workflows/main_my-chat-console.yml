@@ -1,4 +1,4 @@
-name: Build and deploy to MonsterASP
+name: Build and deploy to MonsterASP v2
 
 on:
   push:
