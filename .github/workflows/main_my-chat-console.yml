@@ -1,4 +1,4 @@
-name: Build, publish and deploy to MonsterASP.NET
+name: Build, publish and deploy to MonsterASP.NET v2
 on: [push]
 
 jobs:
