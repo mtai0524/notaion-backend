@@ -25,10 +25,10 @@ jobs:
         run: |
           msdeploy -verb:sync `
             -source:contentPath="${{ github.workspace }}\publish" `
-            -dest:contentPath="${{ secrets.MSDEPLOY_SITE }}",`
-              computerName="https://${{ secrets.MSDEPLOY_SERVER }}/msdeploy.axd",`
-              userName="${{ secrets.MSDEPLOY_USERNAME }}",`
-              password="${{ secrets.MSDEPLOY_PASSWORD }}",`
+            -dest:contentPath="site8642",`
+              computerName="https://site8642.siteasp.net/msdeploy.axd",`
+              userName="site8642",`
+              password="fS=3#5XaWe4_",`
               authtype="Basic",`
               includeAcls="False" `
             -allowUntrusted `
