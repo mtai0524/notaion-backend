@@ -117,11 +117,43 @@ namespace Notaion.API.Controllers
 
             note.IsDeleted = true;
             _context.Entry(note).Property(x => x.IsDeleted).IsModified = true;
-            
+
             await _context.SaveChangesAsync();
 
             // Notify clients via SignalR
             await _hubContext.Clients.Group(userId).SendAsync("NoteDeleted", id);
+
+            return Ok();
+        }
+
+        [HttpPost("{id}/restore")]
+        public async Task<ActionResult<DailyNote>> RestoreNote(string id)
+        {
+            var userId = GetUserId();
+            var note = await _context.DailyNotes.FirstOrDefaultAsync(n => n.Id == id && n.UserId == userId);
+            if (note == null) return NotFound();
+
+            note.IsDeleted = false;
+            _context.Entry(note).Property(x => x.IsDeleted).IsModified = true;
+
+            await _context.SaveChangesAsync();
+
+            await _hubContext.Clients.Group(userId).SendAsync("NoteRestored", note);
+
+            return Ok(note);
+        }
+
+        [HttpDelete("{id}/permanent")]
+        public async Task<IActionResult> PermanentDeleteNote(string id)
+        {
+            var userId = GetUserId();
+            var note = await _context.DailyNotes.FirstOrDefaultAsync(n => n.Id == id && n.UserId == userId);
+            if (note == null) return NotFound();
+
+            _context.DailyNotes.Remove(note);
+            await _context.SaveChangesAsync();
+
+            await _hubContext.Clients.Group(userId).SendAsync("NotePurged", id);
 
             return Ok();
         }
