@@ -82,21 +82,24 @@ pipeline {
             }
         }
 
-        stage('Deploy') {
-            steps {
-                echo '🚀 Đang deploy container...'
-                sh """
-                    docker stop ${CONTAINER_NAME} || true
-                    docker rm   ${CONTAINER_NAME} || true
-                    docker pull ${DOCKER_HUB_USER}/${IMAGE_NAME}:latest
-                    docker run -d \
-                        --name ${CONTAINER_NAME} \
-                        --restart always \
-                        -p ${APP_PORT}:80 \
-                        ${DOCKER_HUB_USER}/${IMAGE_NAME}:latest
-                """
-            }
-        }
+       stage('Deploy') {
+           steps {
+               echo '🚀 Đang deploy container...'
+               sh """
+                   docker stop ${CONTAINER_NAME} || true
+                   docker rm   ${CONTAINER_NAME} || true
+                   docker pull ${DOCKER_HUB_USER}/${IMAGE_NAME}:latest
+                   docker run -d \
+                       --name ${CONTAINER_NAME} \
+                       --restart always \
+                       -p 8081:8080 \
+                       -e BUILD_NUMBER=${BUILD_NUMBER} \
+                       -e DEPLOY_TIME=\$(date '+%Y-%m-%d %H:%M:%S') \
+                       -e APP_VERSION=${IMAGE_TAG} \
+                       ${DOCKER_HUB_USER}/${IMAGE_NAME}:latest
+               """
+           }
+       }
     }
 
     post {
