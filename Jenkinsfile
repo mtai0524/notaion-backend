@@ -35,33 +35,36 @@ pipeline {
             }
         }
 
-stage('Deploy to MonsterASP') {
-    steps {
-        echo '🚀 Đang deploy lên MonsterASP...'
-        withCredentials([usernamePassword(
-            credentialsId: 'monsterasp-creds',
-            usernameVariable: 'DEPLOY_USER',
-            passwordVariable: 'DEPLOY_PASS'
-        )]) {
-            sh """
-                # Publish app ra folder
-                dotnet publish ./NotaionWebApp/Notaion/Notaion.csproj \
-                    -c Release -o ./publish_output
-
-                # Nén lại
-                cd publish_output && zip -r ../deploy.zip . && cd ..
-
-                # Deploy lên MonsterASP qua WebDeploy
-                curl -k -X POST \
-                    "https://site8642.siteasp.net:8172/msdeploy.axd?site=site8642" \
-                    -u "${DEPLOY_USER}:${DEPLOY_PASS}" \
-                    --data-binary @deploy.zip \
-                    -H "Content-Type: application/zip"
-            """
+        stage('Deploy to MonsterASP') {
+            steps {
+                echo '🚀 Đang deploy lên MonsterASP...'
+                withCredentials([usernamePassword(
+                    credentialsId: 'monsterasp-creds',
+                    usernameVariable: 'DEPLOY_USER',
+                    passwordVariable: 'DEPLOY_PASS'
+                )]) {
+                    sh '''
+                        # Lấy file publish từ image đã build sẵn
+                        docker create --name temp_extract mtaidev/notaion-backend:latest
+                        docker cp temp_extract:/app ./publish_output
+                        docker rm temp_extract
+        
+                        # Nén lại
+                        cd publish_output && zip -r ../deploy.zip . && cd ..
+        
+                        # Deploy lên MonsterASP qua WebDeploy
+                        curl -k -X POST \
+                            "https://site8642.siteasp.net:8172/msdeploy.axd?site=site8642" \
+                            -u "$DEPLOY_USER:$DEPLOY_PASS" \
+                            --data-binary @deploy.zip \
+                            -H "Content-Type: application/zip"
+        
+                        # Dọn dẹp
+                        rm -rf publish_output deploy.zip
+                    '''
+                }
+            }
         }
-    }
-}
-
         stage('Push to Docker Hub') {
             steps {
                 echo '📤 Đang push image lên Docker Hub...'
