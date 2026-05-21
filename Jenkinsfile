@@ -1,63 +1,85 @@
-pipeline
-{
+pipeline {
     agent any
-    stages 
-    {
-        stage('Cloning') 
-        {
+
+    environment {
+        DOCKER_HUB_USER = 'mtaidev'
+        IMAGE_NAME      = 'notaion-backend'
+        IMAGE_TAG       = "${BUILD_NUMBER}"
+        CONTAINER_NAME  = 'notaion-backend'
+        APP_PORT        = '8081'
+    }
+
+    triggers {
+        githubPush()
+    }
+
+    stages {
+
+        stage('Cloning') {
             steps {
-                git branch : 'main', credentialsId: '3ceb09c4-d257-4d6b-b65c-26db994addff', url :'https://github.com/mtai0524/notaion-backend.git'
+                echo '📥 Đang clone source code...'
+                git branch: 'main',
+                    credentialsId: '3ceb09c4-d257-4d6b-b65c-26db994addff',
+                    url: 'https://github.com/mtai0524/notaion-backend.git'
             }
         }
-        
-        stage('Restore package')
-        {
-            steps
-            {
-                bat 'dotnet restore .\\NotaionWebApp\\Notaion\\Notaion.csproj'
+
+        stage('Build Docker Image') {
+            steps {
+                echo '🐳 Đang build Docker image...'
+                sh """
+                    docker build -t ${DOCKER_HUB_USER}/${IMAGE_NAME}:${IMAGE_TAG} .
+                    docker tag ${DOCKER_HUB_USER}/${IMAGE_NAME}:${IMAGE_TAG} \
+                               ${DOCKER_HUB_USER}/${IMAGE_NAME}:latest
+                """
             }
         }
-        
-        stage('Build')
-        {
-            steps
-            {
-                bat 'dotnet build .\\NotaionWebApp\\Notaion\\Notaion.csproj --configuration Release'
+
+        stage('Push to Docker Hub') {
+            steps {
+                echo '📤 Đang push image lên Docker Hub...'
+                withCredentials([usernamePassword(
+                    credentialsId: 'dockerhub-creds',
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS'
+                )]) {
+                    sh """
+                        echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
+                        docker push ${DOCKER_HUB_USER}/${IMAGE_NAME}:${IMAGE_TAG}
+                        docker push ${DOCKER_HUB_USER}/${IMAGE_NAME}:latest
+                    """
+                }
             }
         }
-        
-        stage('Publish')
-        {
-            steps
-            {
-                bat 'dotnet publish .\\NotaionWebApp\\Notaion\\Notaion.csproj'
+
+        stage('Deploy') {
+            steps {
+                echo '🚀 Đang deploy container...'
+                sh """
+                    docker stop ${CONTAINER_NAME} || true
+                    docker rm   ${CONTAINER_NAME} || true
+                    docker pull ${DOCKER_HUB_USER}/${IMAGE_NAME}:latest
+                    docker run -d \
+                        --name ${CONTAINER_NAME} \
+                        --restart always \
+                        -p ${APP_PORT}:80 \
+                        ${DOCKER_HUB_USER}/${IMAGE_NAME}:latest
+                """
             }
         }
-        
-        stage('Stop service')
-        {
-            steps{
-                bat '%windir%\\system32\\inetsrv\\appcmd stop sites notaion2.com.vn'
-                bat '%windir%\\system32\\inetsrv\\appcmd stop apppool /apppool.name:notaion2.com.vn'
-                bat 'echo waiting until service stopped'
-                bat 'ping google.com /n 5'
-            }
+    }
+
+    post {
+        success {
+            echo "✅ Deploy thành công! Build #${BUILD_NUMBER}"
+            echo "🌐 App đang chạy tại: http://localhost:${APP_PORT}"
         }
-        
-        stage('Copy iis')
-        {
-            steps{
-                bat 'xcopy .\\NotaionWebApp\\Notaion\\bin\\Debug\\net7.0\\publish T:\\IIS_NOTAION /e /y /i /r'
-            }
+        failure {
+            echo "❌ Deploy thất bại tại Build #${BUILD_NUMBER} - Kiểm tra log!"
         }
-        
-        stage('Start service')
-        {
-            steps{
-                bat '%windir%\\system32\\inetsrv\\appcmd start sites notaion2.com.vn'
-                bat '%windir%\\system32\\inetsrv\\appcmd start apppool /apppool.name:notaion2.com.vn'
-            }
+        always {
+            echo '🧹 Dọn dẹp images cũ...'
+            sh "docker image prune -f"
         }
-       
     }
 }

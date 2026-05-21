@@ -21,4 +21,4 @@ RUN dotnet publish "Notaion.csproj" -c Release -o /app/publish
 FROM mcr.microsoft.com/dotnet/aspnet:7.0
 WORKDIR /app
 COPY --from=publish /app/publish .
-ENTRYPOINT ["dotnet", "Notaion.dll"]
+ENTRYPOINT ["dotnet", "Notaion.dll"]    
