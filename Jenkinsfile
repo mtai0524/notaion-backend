@@ -94,7 +94,7 @@ pipeline {
                        --restart always \
                        -p 8081:8080 \
                        -e BUILD_NUMBER=${BUILD_NUMBER} \
-                       -e DEPLOY_TIME=\$(date '+%Y-%m-%d %H:%M:%S') \
+                       -e "DEPLOY_TIME=\$(date '+%Y-%m-%d %H:%M:%S')" \
                        -e APP_VERSION=${IMAGE_TAG} \
                        ${DOCKER_HUB_USER}/${IMAGE_NAME}:latest
                """
