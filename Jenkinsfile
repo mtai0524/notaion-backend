@@ -7,6 +7,8 @@ pipeline {
         IMAGE_TAG       = "${BUILD_NUMBER}"
         CONTAINER_NAME  = 'notaion-backend'
         APP_PORT        = '8081'
+        FTP_HOST        = 'site8642.siteasp.net'
+        FTP_REMOTE_DIR  = '/wwwroot'
     }
 
     triggers {
@@ -35,36 +37,6 @@ pipeline {
             }
         }
 
-        stage('Deploy to MonsterASP') {
-            steps {
-                echo '🚀 Đang deploy lên MonsterASP...'
-                withCredentials([usernamePassword(
-                    credentialsId: 'monsterasp-creds',
-                    usernameVariable: 'DEPLOY_USER',
-                    passwordVariable: 'DEPLOY_PASS'
-                )]) {
-                    sh '''
-                        # Lấy file publish từ image đã build sẵn
-                        docker create --name temp_extract mtaidev/notaion-backend:latest
-                        docker cp temp_extract:/app ./publish_output
-                        docker rm temp_extract
-        
-                        # Nén lại
-                        cd publish_output && zip -r ../deploy.zip . && cd ..
-        
-                        # Deploy lên MonsterASP qua WebDeploy
-                        curl -k -X POST \
-                            "https://site8642.siteasp.net:8172/msdeploy.axd?site=site8642" \
-                            -u "$DEPLOY_USER:$DEPLOY_PASS" \
-                            --data-binary @deploy.zip \
-                            -H "Content-Type: application/zip"
-        
-                        # Dọn dẹp
-                        rm -rf publish_output deploy.zip
-                    '''
-                }
-            }
-        }
         stage('Push to Docker Hub') {
             steps {
                 echo '📤 Đang push image lên Docker Hub...'
@@ -73,39 +45,93 @@ pipeline {
                     usernameVariable: 'DOCKER_USER',
                     passwordVariable: 'DOCKER_PASS'
                 )]) {
-                    sh """
-                        echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
-                        docker push ${DOCKER_HUB_USER}/${IMAGE_NAME}:${IMAGE_TAG}
-                        docker push ${DOCKER_HUB_USER}/${IMAGE_NAME}:latest
-                    """
+                    sh '''
+                        echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                        docker push ''' + "${DOCKER_HUB_USER}/${IMAGE_NAME}:${IMAGE_TAG}" + '''
+                        docker push ''' + "${DOCKER_HUB_USER}/${IMAGE_NAME}:latest" + '''
+                    '''
                 }
             }
         }
 
-       stage('Deploy') {
-           steps {
-               echo '🚀 Đang deploy container...'
-               sh """
-                   docker stop ${CONTAINER_NAME} || true
-                   docker rm   ${CONTAINER_NAME} || true
-                   docker pull ${DOCKER_HUB_USER}/${IMAGE_NAME}:latest
-                   docker run -d \
-                       --name ${CONTAINER_NAME} \
-                       --restart always \
-                       -p 8081:8080 \
-                       -e BUILD_NUMBER=${BUILD_NUMBER} \
-                       -e "DEPLOY_TIME=\$(date '+%Y-%m-%d %H:%M:%S')" \
-                       -e APP_VERSION=${IMAGE_TAG} \
-                       ${DOCKER_HUB_USER}/${IMAGE_NAME}:latest
-               """
-           }
-       }
+        stage('Deploy to MonsterASP (FTP)') {
+            steps {
+                echo '🌐 Đang deploy lên MonsterASP qua FTP...'
+                withCredentials([usernamePassword(
+                    credentialsId: 'monsterasp-ftp-creds',
+                    usernameVariable: 'FTP_USER',
+                    passwordVariable: 'FTP_PASS'
+                )]) {
+                    sh '''
+                        set -e
+
+                        # Cài lftp nếu chưa có (Jenkins agent dùng Debian/Ubuntu)
+                        if ! command -v lftp >/dev/null 2>&1; then
+                            echo "⚙️  Đang cài lftp..."
+                            (apt-get update && apt-get install -y lftp) \
+                                || (sudo apt-get update && sudo apt-get install -y lftp)
+                        fi
+
+                        # Lấy file publish từ image vừa build
+                        rm -rf publish_output
+                        docker create --name temp_extract mtaidev/notaion-backend:latest
+                        docker cp temp_extract:/app ./publish_output
+                        docker rm temp_extract
+
+                        # Tạo app_offline.htm để IIS dừng app trước khi upload (tránh lock file .dll)
+                        cat > publish_output/app_offline.htm <<'EOF'
+<!doctype html>
+<html><body><h1>Deploying new version...</h1></body></html>
+EOF
+
+                        # Sync toàn bộ folder publish lên wwwroot
+                        lftp -u "$FTP_USER","$FTP_PASS" "ftp://$FTP_HOST" <<EOF
+set ssl:verify-certificate no
+set ftp:ssl-allow yes
+set ftp:ssl-protect-data yes
+set net:max-retries 3
+set net:timeout 20
+mirror -R --delete --parallel=4 --verbose \
+       --exclude-glob app_offline.htm \
+       ./publish_output "$FTP_REMOTE_DIR"
+# Upload app_offline.htm trước, rồi xoá sau khi mirror xong để app online lại
+put -O "$FTP_REMOTE_DIR" ./publish_output/app_offline.htm
+rm -f "$FTP_REMOTE_DIR/app_offline.htm"
+bye
+EOF
+
+                        rm -rf publish_output
+                        echo "✅ Đã deploy lên MonsterASP."
+                    '''
+                }
+            }
+        }
+
+        stage('Deploy Container (local)') {
+            steps {
+                echo '🚀 Đang deploy container local...'
+                sh """
+                    docker stop ${CONTAINER_NAME} || true
+                    docker rm   ${CONTAINER_NAME} || true
+                    docker pull ${DOCKER_HUB_USER}/${IMAGE_NAME}:latest
+                    docker run -d \
+                        --name ${CONTAINER_NAME} \
+                        --restart always \
+                        -p ${APP_PORT}:8080 \
+                        -e BUILD_NUMBER=${BUILD_NUMBER} \
+                        -e "DEPLOY_TIME=\$(date '+%Y-%m-%d %H:%M:%S')" \
+                        -e APP_VERSION=${IMAGE_TAG} \
+                        ${DOCKER_HUB_USER}/${IMAGE_NAME}:latest
+                """
+            }
+        }
     }
 
     post {
         success {
             echo "✅ Deploy thành công! Build #${BUILD_NUMBER}"
-            echo "🌐 App đang chạy tại: http://localhost:${APP_PORT}"
+            echo "🌐 Local: http://localhost:${APP_PORT}"
+            echo "🌐 MonsterASP: http://notaion.runasp.net"
         }
         failure {
             echo "❌ Deploy thất bại tại Build #${BUILD_NUMBER} - Kiểm tra log!"
