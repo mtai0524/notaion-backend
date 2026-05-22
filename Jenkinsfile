@@ -72,7 +72,7 @@ pipeline {
                         docker rm temp_extract
 
                         # Ghi đè web.config đúng chuẩn IIS/MonsterASP
-                      cat > publish_output/web.config <<'WEBCONFIG'
+                        cat > publish_output/web.config <<'WEBCONFIG'
 <?xml version="1.0" encoding="utf-8"?>
 <configuration>
   <location path="." inheritInChildApplications="false">
@@ -126,6 +126,7 @@ set xfer:clobber yes
 set xfer:timeout 120
 set xfer:use-temp-file yes
 set xfer:temp-file-name /.tmp.lftp
+mkdir -p "$FTP_REMOTE_DIR"
 put -O "$FTP_REMOTE_DIR" /data/app_offline.htm
 mirror -R --delete --continue --verbose --no-perms --exclude-glob app_offline.htm /data "$FTP_REMOTE_DIR"
 rm -f "$FTP_REMOTE_DIR/app_offline.htm"
