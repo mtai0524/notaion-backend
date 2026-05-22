@@ -91,10 +91,19 @@ OFFLINE
 set ssl:verify-certificate no
 set ftp:ssl-allow yes
 set ftp:ssl-protect-data yes
-set net:max-retries 3
-set net:timeout 20
+set ftp:passive-mode on
+set ftp:use-site-chmod no
+set ftp:use-site-utime no
+set ftp:use-site-utime2 no
+set mirror:set-permissions no
+set mirror:parallel-transfer-count 1
+set net:max-retries 5
+set net:reconnect-interval-base 5
+set net:reconnect-interval-multiplier 1.5
+set net:timeout 30
+set xfer:clobber yes
 put -O "$FTP_REMOTE_DIR" /data/app_offline.htm
-mirror -R --delete --parallel=4 --verbose --exclude-glob app_offline.htm /data "$FTP_REMOTE_DIR"
+mirror -R --delete --continue --verbose --no-perms --exclude-glob app_offline.htm /data "$FTP_REMOTE_DIR"
 rm -f "$FTP_REMOTE_DIR/app_offline.htm"
 bye
 LFTP
