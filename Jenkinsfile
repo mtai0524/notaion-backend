@@ -65,40 +65,40 @@ pipeline {
                     sh '''
                         set -e
 
-                        # Cài lftp nếu chưa có (Jenkins agent dùng Debian/Ubuntu)
-                        if ! command -v lftp >/dev/null 2>&1; then
-                            echo "⚙️  Đang cài lftp..."
-                            (apt-get update && apt-get install -y lftp) \
-                                || (sudo apt-get update && sudo apt-get install -y lftp)
-                        fi
-
                         # Lấy file publish từ image vừa build
                         rm -rf publish_output
                         docker create --name temp_extract mtaidev/notaion-backend:latest
                         docker cp temp_extract:/app ./publish_output
                         docker rm temp_extract
 
-                        # Tạo app_offline.htm để IIS dừng app trước khi upload (tránh lock file .dll)
-                        cat > publish_output/app_offline.htm <<'EOF'
+                        # app_offline.htm: bảo IIS dừng app trước khi ghi đè (tránh lock .dll)
+                        cat > publish_output/app_offline.htm <<'OFFLINE'
 <!doctype html>
 <html><body><h1>Deploying new version...</h1></body></html>
-EOF
+OFFLINE
 
-                        # Sync toàn bộ folder publish lên wwwroot
-                        lftp -u "$FTP_USER","$FTP_PASS" "ftp://$FTP_HOST" <<EOF
+                        # Tar workspace và stream vào Alpine container có lftp.
+                        # Dùng stdin pipe để không phải mount volume (tránh lỗi path khi Jenkins chạy trong Docker - DooD).
+                        tar -C publish_output -cf - . | docker run --rm -i \
+                            -e FTP_USER \
+                            -e FTP_PASS \
+                            -e FTP_HOST \
+                            -e FTP_REMOTE_DIR \
+                            alpine:3.20 sh -c '
+                                apk add --no-cache lftp tar >/dev/null
+                                mkdir -p /data && tar -xf - -C /data
+                                lftp -u "$FTP_USER","$FTP_PASS" "ftp://$FTP_HOST" <<LFTP
 set ssl:verify-certificate no
 set ftp:ssl-allow yes
 set ftp:ssl-protect-data yes
 set net:max-retries 3
 set net:timeout 20
-mirror -R --delete --parallel=4 --verbose \
-       --exclude-glob app_offline.htm \
-       ./publish_output "$FTP_REMOTE_DIR"
-# Upload app_offline.htm trước, rồi xoá sau khi mirror xong để app online lại
-put -O "$FTP_REMOTE_DIR" ./publish_output/app_offline.htm
+put -O "$FTP_REMOTE_DIR" /data/app_offline.htm
+mirror -R --delete --parallel=4 --verbose --exclude-glob app_offline.htm /data "$FTP_REMOTE_DIR"
 rm -f "$FTP_REMOTE_DIR/app_offline.htm"
 bye
-EOF
+LFTP
+                            '
 
                         rm -rf publish_output
                         echo "✅ Đã deploy lên MonsterASP."
