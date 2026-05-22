@@ -72,7 +72,7 @@ pipeline {
                         docker rm temp_extract
 
                         # Ghi đè web.config đúng chuẩn IIS/MonsterASP
-                        cat > publish_output/web.config <<'WEBCONFIG'
+                      cat > publish_output/web.config <<'WEBCONFIG'
 <?xml version="1.0" encoding="utf-8"?>
 <configuration>
   <location path="." inheritInChildApplications="false">
@@ -83,9 +83,9 @@ pipeline {
              resourceType="Unspecified" />
       </handlers>
       <aspNetCore processPath="dotnet"
-                  arguments=".\Notaion.dll"
+                  arguments=".\\Notaion.dll"
                   stdoutLogEnabled="false"
-                  stdoutLogPath=".\logs\stdout"
+                  stdoutLogPath=".\\logs\\stdout"
                   hostingModel="inprocess" />
     </system.webServer>
   </location>
