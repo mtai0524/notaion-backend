@@ -71,14 +71,34 @@ pipeline {
                         docker cp temp_extract:/app ./publish_output
                         docker rm temp_extract
 
+                        # Ghi đè web.config đúng chuẩn IIS/MonsterASP
+                        cat > publish_output/web.config <<'WEBCONFIG'
+<?xml version="1.0" encoding="utf-8"?>
+<configuration>
+  <location path="." inheritInChildApplications="false">
+    <system.webServer>
+      <handlers>
+        <add name="aspNetCore" path="*" verb="*"
+             modules="AspNetCoreModuleV2"
+             resourceType="Unspecified" />
+      </handlers>
+      <aspNetCore processPath="dotnet"
+                  arguments=".\Notaion.dll"
+                  stdoutLogEnabled="false"
+                  stdoutLogPath=".\logs\stdout"
+                  hostingModel="inprocess" />
+    </system.webServer>
+  </location>
+</configuration>
+WEBCONFIG
+
                         # app_offline.htm: bảo IIS dừng app trước khi ghi đè (tránh lock .dll)
                         cat > publish_output/app_offline.htm <<'OFFLINE'
 <!doctype html>
 <html><body><h1>Deploying new version...</h1></body></html>
 OFFLINE
 
-                        # Tar workspace và stream vào Alpine container có lftp.
-                        # Dùng stdin pipe để không phải mount volume (tránh lỗi path khi Jenkins chạy trong Docker - DooD).
+                        # Tar workspace và stream vào Alpine container có lftp
                         tar -C publish_output -cf - . | docker run --rm -i \
                             -e FTP_USER \
                             -e FTP_PASS \
@@ -90,18 +110,22 @@ OFFLINE
                                 lftp -u "$FTP_USER","$FTP_PASS" "ftp://$FTP_HOST" <<LFTP
 set ssl:verify-certificate no
 set ftp:ssl-allow yes
-set ftp:ssl-protect-data yes
+set ftp:ssl-protect-data no
 set ftp:passive-mode on
+set ftp:prefer-epsv no
 set ftp:use-site-chmod no
 set ftp:use-site-utime no
 set ftp:use-site-utime2 no
 set mirror:set-permissions no
 set mirror:parallel-transfer-count 1
-set net:max-retries 5
-set net:reconnect-interval-base 5
-set net:reconnect-interval-multiplier 1.5
-set net:timeout 30
+set net:max-retries 10
+set net:reconnect-interval-base 3
+set net:reconnect-interval-multiplier 1
+set net:timeout 60
 set xfer:clobber yes
+set xfer:timeout 120
+set xfer:use-temp-file yes
+set xfer:temp-file-name /.tmp.lftp
 put -O "$FTP_REMOTE_DIR" /data/app_offline.htm
 mirror -R --delete --continue --verbose --no-perms --exclude-glob app_offline.htm /data "$FTP_REMOTE_DIR"
 rm -f "$FTP_REMOTE_DIR/app_offline.htm"
