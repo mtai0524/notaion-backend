@@ -52,33 +52,6 @@ pipeline {
             }
         }
 
-        stage('Write web.config') {
-            steps {
-                echo '📝 Ghi web.config chuẩn IIS...'
-                sh """
-                    cat > ${PUBLISH_DIR}/web.config <<'WEBCONFIG'
-<?xml version="1.0" encoding="utf-8"?>
-<configuration>
-  <location path="." inheritInChildApplications="false">
-    <system.webServer>
-      <handlers>
-        <add name="aspNetCore" path="*" verb="*"
-             modules="AspNetCoreModuleV2"
-             resourceType="Unspecified" />
-      </handlers>
-      <aspNetCore processPath="dotnet"
-                  arguments=".\\Notaion.dll"
-                  stdoutLogEnabled="false"
-                  stdoutLogPath=".\\logs\\stdout"
-                  hostingModel="inprocess" />
-    </system.webServer>
-  </location>
-</configuration>
-WEBCONFIG
-                """
-            }
-        }
-
         stage('Deploy to MonsterASP (FTP)') {
             steps {
                 echo '🌐 Đang deploy lên MonsterASP qua FTP...'
@@ -88,7 +61,6 @@ WEBCONFIG
                     passwordVariable: 'FTP_PASS'
                 )]) {
                     sh '''
-                        # Tạo app_offline.htm để IIS dừng app trước khi deploy
                         echo '<html><body><h1>Deploying, please wait...</h1></body></html>' \
                             > /tmp/app_offline.htm
 
@@ -101,19 +73,9 @@ set net:max-retries 5
 set net:timeout 60
 set xfer:clobber yes
 set mirror:parallel-transfer-count 2
-
-# Upload app_offline.htm trước để dừng app
 put /tmp/app_offline.htm -o /wwwroot/app_offline.htm
-
-# Upload toàn bộ files
-mirror -R --delete --continue --no-perms \
-    --exclude app_offline.htm \
-    /var/jenkins_home/workspace/notaion-backend/publish_output \
-    /wwwroot
-
-# Xóa app_offline.htm để app chạy lại
+mirror -R --delete --continue --no-perms --exclude app_offline.htm /var/jenkins_home/workspace/notaion-backend/publish_output /wwwroot
 rm -f /wwwroot/app_offline.htm
-
 bye
 LFTP
 
