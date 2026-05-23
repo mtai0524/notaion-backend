@@ -9,6 +9,8 @@ pipeline {
         APP_PORT        = '8081'
         FTP_HOST        = 'site8642.siteasp.net'
         FTP_REMOTE_DIR  = '/wwwroot'
+        PUBLISH_DIR     = "${WORKSPACE}/publish_output"
+        DOTNET_CLI_TELEMETRY_OPTOUT = '1'
     }
 
     triggers {
@@ -26,53 +28,21 @@ pipeline {
             }
         }
 
-        stage('Build Docker Image') {
+        stage('Build & Publish') {
             steps {
-                echo '🐳 Đang build Docker image...'
+                echo '🔨 Đang dotnet publish...'
                 sh """
-                    docker build -t ${DOCKER_HUB_USER}/${IMAGE_NAME}:${IMAGE_TAG} .
-                    docker tag ${DOCKER_HUB_USER}/${IMAGE_NAME}:${IMAGE_TAG} \
-                               ${DOCKER_HUB_USER}/${IMAGE_NAME}:latest
+                    rm -rf ${PUBLISH_DIR}
+                    dotnet publish -c Release -o ${PUBLISH_DIR} --self-contained false
                 """
             }
         }
 
-        stage('Push to Docker Hub') {
+        stage('Write web.config') {
             steps {
-                echo '📤 Đang push image lên Docker Hub...'
-                withCredentials([usernamePassword(
-                    credentialsId: 'dockerhub-creds',
-                    usernameVariable: 'DOCKER_USER',
-                    passwordVariable: 'DOCKER_PASS'
-                )]) {
-                    sh '''
-                        echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
-                        docker push ''' + "${DOCKER_HUB_USER}/${IMAGE_NAME}:${IMAGE_TAG}" + '''
-                        docker push ''' + "${DOCKER_HUB_USER}/${IMAGE_NAME}:latest" + '''
-                    '''
-                }
-            }
-        }
-
-        stage('Deploy to MonsterASP (FTP)') {
-            steps {
-                echo '🌐 Đang deploy lên MonsterASP qua FTP...'
-                withCredentials([usernamePassword(
-                    credentialsId: 'monsterasp-ftp-creds',
-                    usernameVariable: 'FTP_USER',
-                    passwordVariable: 'FTP_PASS'
-                )]) {
-                    sh '''
-                        set -e
-
-                        # Lấy file publish từ image vừa build
-                        rm -rf publish_output
-                        docker create --name temp_extract mtaidev/notaion-backend:latest
-                        docker cp temp_extract:/app ./publish_output
-                        docker rm temp_extract
-
-                        # Ghi đè web.config đúng chuẩn IIS/MonsterASP
-                        cat > publish_output/web.config <<'WEBCONFIG'
+                echo '📝 Ghi web.config chuẩn IIS...'
+                sh """
+                    cat > ${PUBLISH_DIR}/web.config <<'WEBCONFIG'
 <?xml version="1.0" encoding="utf-8"?>
 <configuration>
   <location path="." inheritInChildApplications="false">
@@ -91,23 +61,27 @@ pipeline {
   </location>
 </configuration>
 WEBCONFIG
+                """
+            }
+        }
 
-                        # app_offline.htm: bảo IIS dừng app trước khi ghi đè (tránh lock .dll)
-                        cat > publish_output/app_offline.htm <<'OFFLINE'
-<!doctype html>
-<html><body><h1>Deploying new version...</h1></body></html>
+        stage('Deploy to MonsterASP (FTP)') {
+            steps {
+                echo '🌐 Đang deploy lên MonsterASP qua FTP...'
+                withCredentials([usernamePassword(
+                    credentialsId: 'monsterasp-ftp-creds',
+                    usernameVariable: 'FTP_USER',
+                    passwordVariable: 'FTP_PASS'
+                )]) {
+                    sh """
+                        set -e
+
+                        # Đặt app_offline để IIS nhả lock .dll
+                        cat > ${PUBLISH_DIR}/app_offline.htm <<'OFFLINE'
+<!doctype html><html><body><h1>Deploying...</h1></body></html>
 OFFLINE
 
-                        # Tar workspace và stream vào Alpine container có lftp
-                        tar -C publish_output -cf - . | docker run --rm -i \
-                            -e FTP_USER \
-                            -e FTP_PASS \
-                            -e FTP_HOST \
-                            -e FTP_REMOTE_DIR \
-                            alpine:3.20 sh -c '
-                                apk add --no-cache lftp tar >/dev/null
-                                mkdir -p /data && tar -xf - -C /data
-                                lftp -u "$FTP_USER","$FTP_PASS" "ftp://$FTP_HOST" <<LFTP
+                        lftp -u "\$FTP_USER","\$FTP_PASS" "ftp://\$FTP_HOST" <<LFTP
 set ssl:verify-certificate no
 set ftp:ssl-allow yes
 set ftp:ssl-protect-data no
@@ -124,36 +98,35 @@ set net:reconnect-interval-multiplier 1
 set net:timeout 60
 set xfer:clobber yes
 set xfer:timeout 120
-set xfer:use-temp-file yes
-set xfer:temp-file-name /.tmp.lftp
-mkdir -p "$FTP_REMOTE_DIR"
-put -O "$FTP_REMOTE_DIR" /data/app_offline.htm
-mirror -R --delete --continue --verbose --no-perms --exclude-glob app_offline.htm /data "$FTP_REMOTE_DIR"
-rm -f "$FTP_REMOTE_DIR/app_offline.htm"
+set xfer:use-temp-file no
+mkdir -p ${FTP_REMOTE_DIR}
+put -O ${FTP_REMOTE_DIR} ${PUBLISH_DIR}/app_offline.htm
+mirror -R --delete --continue --verbose --no-perms --exclude-glob app_offline.htm ${PUBLISH_DIR} ${FTP_REMOTE_DIR}
+rm -f ${FTP_REMOTE_DIR}/app_offline.htm
 bye
 LFTP
-                            '
 
-                        rm -rf publish_output
-                        echo "✅ Đã deploy lên MonsterASP."
-                    '''
+                        echo "✅ Deploy FTP hoàn tất."
+                    """
                 }
             }
         }
 
-        stage('Deploy Container (local)') {
+        stage('Build & Run Docker (local)') {
             steps {
-                echo '🚀 Đang deploy container local...'
+                echo '🐳 Build và chạy container local...'
                 sh """
+                    docker build -t ${DOCKER_HUB_USER}/${IMAGE_NAME}:${IMAGE_TAG} .
+                    docker tag  ${DOCKER_HUB_USER}/${IMAGE_NAME}:${IMAGE_TAG} \
+                                ${DOCKER_HUB_USER}/${IMAGE_NAME}:latest
+
                     docker stop ${CONTAINER_NAME} || true
                     docker rm   ${CONTAINER_NAME} || true
-                    docker pull ${DOCKER_HUB_USER}/${IMAGE_NAME}:latest
                     docker run -d \
                         --name ${CONTAINER_NAME} \
                         --restart always \
                         -p ${APP_PORT}:8080 \
                         -e BUILD_NUMBER=${BUILD_NUMBER} \
-                        -e "DEPLOY_TIME=\$(date '+%Y-%m-%d %H:%M:%S')" \
                         -e APP_VERSION=${IMAGE_TAG} \
                         ${DOCKER_HUB_USER}/${IMAGE_NAME}:latest
                 """
@@ -164,15 +137,18 @@ LFTP
     post {
         success {
             echo "✅ Deploy thành công! Build #${BUILD_NUMBER}"
-            echo "🌐 Local: http://localhost:${APP_PORT}"
+            echo "🌐 Local:      http://localhost:${APP_PORT}"
             echo "🌐 MonsterASP: http://notaion.runasp.net"
         }
         failure {
             echo "❌ Deploy thất bại tại Build #${BUILD_NUMBER} - Kiểm tra log!"
         }
         always {
-            echo '🧹 Dọn dẹp images cũ...'
-            sh "docker image prune -f"
+            echo '🧹 Dọn dẹp...'
+            sh """
+                rm -rf ${PUBLISH_DIR}
+                docker image prune -f
+            """
         }
     }
 }
