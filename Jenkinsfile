@@ -28,20 +28,20 @@ pipeline {
             }
         }
 
-        stage('Build & Publish') {
-            steps {
-                echo '🔨 Đang dotnet publish qua Docker...'
-                sh """
-                    rm -rf ${PUBLISH_DIR}
-                    docker run --rm \
-                        -v ${WORKSPACE}:/src \
-                        -v ${PUBLISH_DIR}:/publish \
-                        -w /src \
-                        mcr.microsoft.com/dotnet/sdk:8.0 \
-                        dotnet publish -c Release -o /publish --self-contained false
-                """
-            }
-        }
+       stage('Build & Publish') {
+    steps {
+        echo '🔨 Đang dotnet publish qua Docker...'
+        sh """
+            rm -rf /var/jenkins_home/workspace/notaion-backend/publish_output
+            docker run --rm \
+                -v /var/jenkins_home/workspace/notaion-backend:/src \
+                -v /var/jenkins_home/workspace/notaion-backend/publish_output:/publish \
+                -w /src/NotaionWebApp/Notaion \
+                mcr.microsoft.com/dotnet/sdk:9.0 \
+                dotnet publish Notaion.csproj -c Release -o /publish --self-contained false
+        """
+    }
+}
 
         stage('Write web.config') {
             steps {
