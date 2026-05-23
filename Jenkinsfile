@@ -30,10 +30,15 @@ pipeline {
 
         stage('Build & Publish') {
             steps {
-                echo '🔨 Đang dotnet publish...'
+                echo '🔨 Đang dotnet publish qua Docker...'
                 sh """
                     rm -rf ${PUBLISH_DIR}
-                    dotnet publish -c Release -o ${PUBLISH_DIR} --self-contained false
+                    docker run --rm \
+                        -v ${WORKSPACE}:/src \
+                        -v ${PUBLISH_DIR}:/publish \
+                        -w /src \
+                        mcr.microsoft.com/dotnet/sdk:8.0 \
+                        dotnet publish -c Release -o /publish --self-contained false
                 """
             }
         }
@@ -76,12 +81,20 @@ WEBCONFIG
                     sh """
                         set -e
 
-                        # Đặt app_offline để IIS nhả lock .dll
                         cat > ${PUBLISH_DIR}/app_offline.htm <<'OFFLINE'
 <!doctype html><html><body><h1>Deploying...</h1></body></html>
 OFFLINE
 
-                        lftp -u "\$FTP_USER","\$FTP_PASS" "ftp://\$FTP_HOST" <<LFTP
+                        docker run --rm \
+                            -v ${PUBLISH_DIR}:/data \
+                            -e FTP_USER="\$FTP_USER" \
+                            -e FTP_PASS="\$FTP_PASS" \
+                            -e FTP_HOST="${FTP_HOST}" \
+                            -e FTP_REMOTE_DIR="${FTP_REMOTE_DIR}" \
+                            alpine:3.20 sh -c '
+                                apk add --no-cache lftp >/dev/null 2>&1
+
+                                lftp -u "\$FTP_USER","\$FTP_PASS" "ftp://\$FTP_HOST" <<LFTP
 set ssl:verify-certificate no
 set ftp:ssl-allow yes
 set ftp:ssl-protect-data no
@@ -99,12 +112,13 @@ set net:timeout 60
 set xfer:clobber yes
 set xfer:timeout 120
 set xfer:use-temp-file no
-mkdir -p ${FTP_REMOTE_DIR}
-put -O ${FTP_REMOTE_DIR} ${PUBLISH_DIR}/app_offline.htm
-mirror -R --delete --continue --verbose --no-perms --exclude-glob app_offline.htm ${PUBLISH_DIR} ${FTP_REMOTE_DIR}
-rm -f ${FTP_REMOTE_DIR}/app_offline.htm
+mkdir -p \$FTP_REMOTE_DIR
+put -O \$FTP_REMOTE_DIR /data/app_offline.htm
+mirror -R --delete --continue --verbose --no-perms --exclude-glob app_offline.htm /data \$FTP_REMOTE_DIR
+rm -f \$FTP_REMOTE_DIR/app_offline.htm
 bye
 LFTP
+                            '
 
                         echo "✅ Deploy FTP hoàn tất."
                     """
