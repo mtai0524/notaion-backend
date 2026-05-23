@@ -33,6 +33,13 @@ pipeline {
         echo '🔨 Đang dotnet publish qua Docker...'
         sh """
             rm -rf /var/jenkins_home/workspace/notaion-backend/publish_output
+
+            # Kiểm tra cấu trúc thư mục
+            docker run --rm \
+                -v /var/jenkins_home/workspace/notaion-backend:/src \
+                mcr.microsoft.com/dotnet/sdk:9.0 \
+                find /src -name "*.csproj" -type f
+
             docker run --rm \
                 -v /var/jenkins_home/workspace/notaion-backend:/src \
                 -v /var/jenkins_home/workspace/notaion-backend/publish_output:/publish \
