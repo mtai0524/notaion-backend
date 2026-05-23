@@ -11,7 +11,7 @@ namespace Notaion.Controllers
         public IActionResult Get()
         {
             // Trả về trạng thái OK để cho biết rằng API đang hoạt động
-            return Ok(new { status = "API running devduide jenkins test deployment" });
+            return Ok(new { status = "API running devduide jenkins test deployment ftp check" });
         }
     }
 }
