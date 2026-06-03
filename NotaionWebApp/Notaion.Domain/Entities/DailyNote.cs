@@ -53,5 +53,10 @@ namespace Notaion.Domain.Entities
 
         // Linking (Store as comma-separated IDs or JSON)
         public string? LinkedNoteIds { get; set; }
+
+        // Pasted/dropped images & files. Persisted as a JSON string column via a
+        // value converter in ApplicationDbContext (kept as a typed list here so
+        // the API binds/serializes the array the frontend sends and reads).
+        public List<Attachment> Attachments { get; set; } = new();
     }
 }
