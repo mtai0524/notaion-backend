@@ -1,6 +1,10 @@
 using CloudinaryDotNet.Actions;
 using CloudinaryDotNet;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
+using System.Text;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -292,6 +296,156 @@ namespace WebAPI.Controllers
             return Redirect($"{frontendUrl}/login-success?token={token}");
         }
 
+        // ============================================================
+        // ACCOUNT LINKING — link/unlink external providers (Discord, ...)
+        // to the CURRENT account, and list what's linked.
+        // Uses ASP.NET Identity's AspNetUserLogins table (no new schema).
+        // ============================================================
 
+        // The link flow is a top-level browser redirect, so the JWT can't ride
+        // in an Authorization header (cross-origin). It is passed as ?token and
+        // validated here, then the userId is carried through the OAuth round
+        // trip via AuthenticationProperties.
+        private string ValidateTokenGetUserId(string token)
+        {
+            if (string.IsNullOrEmpty(token)) return null;
+            try
+            {
+                var handler = new JwtSecurityTokenHandler();
+                var parameters = new TokenValidationParameters
+                {
+                    ValidateIssuer = true,
+                    ValidateAudience = true,
+                    ValidateLifetime = true,
+                    ValidateIssuerSigningKey = true,
+                    ValidIssuer = _configuration["JWT:ValidIssuer"],
+                    ValidAudience = _configuration["JWT:ValidAudience"],
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["JWT:Secret"]))
+                };
+                var principal = handler.ValidateToken(token, parameters, out _);
+                return principal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        // Where to send the browser back to after the linking round trip.
+        private string ResolveLinkReturnUrl(string returnUrl)
+        {
+            if (!string.IsNullOrWhiteSpace(returnUrl)) return returnUrl.TrimEnd('/');
+            var frontendUrl = _configuration["FrontendUrl"]?.TrimEnd('/');
+            if (string.IsNullOrEmpty(frontendUrl) || frontendUrl.Contains("your-frontend-domain"))
+                frontendUrl = "https://notaion.onrender.com";
+            return $"{frontendUrl}/setting";
+        }
+
+        [HttpGet("discord-link")]
+        public IActionResult DiscordLink([FromQuery] string token, [FromQuery] string returnUrl = null)
+        {
+            var clientId = _configuration["Authentication:Discord:AppId"];
+            if (string.IsNullOrEmpty(clientId) || clientId == "YOUR_DISCORD_CLIENT_ID")
+                return BadRequest("Discord Authentication is not configured on the server.");
+
+            var userId = ValidateTokenGetUserId(token);
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized("Invalid or expired token.");
+
+            var properties = _signInManager.ConfigureExternalAuthenticationProperties("Discord", Url.Action("DiscordLinkCallback"));
+            properties.Items["LinkUserId"] = userId;
+            properties.Items["LinkReturnUrl"] = ResolveLinkReturnUrl(returnUrl);
+            return Challenge(properties, "Discord");
+        }
+
+        [HttpGet("discord-link-callback")]
+        public async Task<IActionResult> DiscordLinkCallback()
+        {
+            var info = await _signInManager.GetExternalLoginInfoAsync();
+
+            var returnUrl = "https://notaion.onrender.com/setting";
+            if (info?.AuthenticationProperties != null &&
+                info.AuthenticationProperties.Items.TryGetValue("LinkReturnUrl", out var ru) &&
+                !string.IsNullOrEmpty(ru))
+            {
+                returnUrl = ru;
+            }
+
+            if (info == null)
+                return Redirect($"{returnUrl}?link=error");
+
+            info.AuthenticationProperties.Items.TryGetValue("LinkUserId", out var userId);
+            if (string.IsNullOrEmpty(userId))
+                return Redirect($"{returnUrl}?link=error");
+
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null)
+                return Redirect($"{returnUrl}?link=error");
+
+            // If this external login is already attached to someone, don't steal it.
+            var existing = await _userManager.FindByLoginAsync(info.LoginProvider, info.ProviderKey);
+            if (existing != null)
+            {
+                return existing.Id == user.Id
+                    ? Redirect($"{returnUrl}?link=already&provider=Discord")
+                    : Redirect($"{returnUrl}?link=conflict&provider=Discord");
+            }
+
+            var addResult = await _userManager.AddLoginAsync(user, info);
+            if (!addResult.Succeeded)
+                return Redirect($"{returnUrl}?link=error");
+
+            // Adopt the Discord avatar only if the account has none yet.
+            var avatarUrl = info.Principal.FindFirstValue("urn:discord:avatar:url");
+            if (!string.IsNullOrEmpty(avatarUrl) && string.IsNullOrEmpty(user.Avatar))
+            {
+                user.Avatar = avatarUrl;
+                await _userManager.UpdateAsync(user);
+            }
+
+            return Redirect($"{returnUrl}?link=success&provider=Discord");
+        }
+
+        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
+        [HttpGet("linked-providers")]
+        public async Task<IActionResult> LinkedProviders()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var user = userId == null ? null : await _userManager.FindByIdAsync(userId);
+            if (user == null) return Unauthorized();
+
+            var logins = await _userManager.GetLoginsAsync(user);
+            var hasPassword = await _userManager.HasPasswordAsync(user);
+
+            var providers = logins
+                .Select(l => new { provider = l.LoginProvider, displayName = l.ProviderDisplayName ?? l.LoginProvider })
+                .ToList();
+
+            return Ok(new { hasPassword, providers });
+        }
+
+        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
+        [HttpDelete("unlink-provider/{provider}")]
+        public async Task<IActionResult> UnlinkProvider(string provider)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var user = userId == null ? null : await _userManager.FindByIdAsync(userId);
+            if (user == null) return Unauthorized();
+
+            var logins = await _userManager.GetLoginsAsync(user);
+            var hasPassword = await _userManager.HasPasswordAsync(user);
+
+            // Never remove the user's only way to sign in.
+            if (!hasPassword && logins.Count <= 1)
+                return BadRequest(new { message = "Đây là phương thức đăng nhập duy nhất của bạn. Hãy đặt mật khẩu trước khi gỡ liên kết." });
+
+            var login = logins.FirstOrDefault(l => string.Equals(l.LoginProvider, provider, StringComparison.OrdinalIgnoreCase));
+            if (login == null) return NotFound(new { message = "Provider chưa được liên kết." });
+
+            var result = await _userManager.RemoveLoginAsync(user, login.LoginProvider, login.ProviderKey);
+            if (!result.Succeeded) return BadRequest(new { message = "Gỡ liên kết thất bại." });
+
+            return Ok(new { message = "Đã gỡ liên kết", provider = login.LoginProvider });
+        }
     }
 }
