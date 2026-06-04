@@ -17,6 +17,7 @@ using Notaion.Application.Interfaces.Services;
 using Notaion.Infrastructure.Services;
 using System.Text;
 using AspNet.Security.OAuth.Discord;
+using AspNet.Security.OAuth.GitHub;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -106,6 +107,13 @@ builder.Services.AddAuthentication(options =>
             options.ClientSecret = builder.Configuration["Authentication:Discord:AppSecret"] ?? "";
             options.SaveTokens = true;
             options.Scope.Add("email");
+        })
+        .AddGitHub(options =>
+        {
+            options.ClientId = builder.Configuration["Authentication:GitHub:AppId"] ?? "";
+            options.ClientSecret = builder.Configuration["Authentication:GitHub:AppSecret"] ?? "";
+            options.SaveTokens = true;
+            options.Scope.Add("user:email");
         });
 builder.Services.AddAuthorization();
 builder.Services.AddSignalR().AddHubOptions<ChatHub>(options =>

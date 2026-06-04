@@ -296,8 +296,99 @@ namespace WebAPI.Controllers
             return Redirect($"{frontendUrl}/login-success?token={token}");
         }
 
+        [HttpGet("github-login")]
+        public IActionResult GitHubLogin()
+        {
+            var clientId = _configuration["Authentication:GitHub:AppId"];
+            if (string.IsNullOrEmpty(clientId) || clientId == "YOUR_GITHUB_CLIENT_ID")
+            {
+                return BadRequest("GitHub Authentication is not configured on the server.");
+            }
+
+            var properties = _signInManager.ConfigureExternalAuthenticationProperties("GitHub", Url.Action("GitHubCallback"));
+            return Challenge(properties, "GitHub");
+        }
+
+        [HttpGet("github-callback")]
+        public async Task<IActionResult> GitHubCallback()
+        {
+            var info = await _signInManager.GetExternalLoginInfoAsync();
+            if (info == null)
+            {
+                Console.WriteLine("GitHub login failed: info is null. Check ClientId/Secret and Redirect URIs.");
+                return Redirect($"{_configuration["FrontendUrl"] ?? "https://notaion.onrender.com"}/login?error=github_info_null");
+            }
+
+            var result = await _signInManager.ExternalLoginSignInAsync(info.LoginProvider, info.ProviderKey, isPersistent: false);
+
+            User user = null;
+            // Lấy thông tin từ GitHub
+            var email = info.Principal.FindFirstValue(ClaimTypes.Email);
+            var name = info.Principal.FindFirstValue(ClaimTypes.Name) ?? "GitHubUser";
+            var githubId = info.Principal.FindFirstValue(ClaimTypes.NameIdentifier);
+            // GitHub avatar dựng từ numeric user id (URL chính tắc, không cần claim mapping).
+            var avatarUrl = string.IsNullOrEmpty(githubId)
+                ? "https://avatars.githubusercontent.com/u/0"
+                : $"https://avatars.githubusercontent.com/u/{githubId}?v=4";
+
+            if (result.Succeeded)
+            {
+                user = await _userManager.FindByLoginAsync(info.LoginProvider, info.ProviderKey);
+                // Cập nhật Avatar nếu có thay đổi
+                if (user != null && user.Avatar != avatarUrl)
+                {
+                    user.Avatar = avatarUrl;
+                    await _userManager.UpdateAsync(user);
+                }
+            }
+            else
+            {
+                // Nếu không có email (email private trên GitHub), tạo email giả
+                if (string.IsNullOrEmpty(email)) email = $"{githubId}@github.com";
+
+                user = await _userManager.FindByEmailAsync(email);
+                if (user == null)
+                {
+                    user = new User
+                    {
+                        UserName = name,
+                        Email = email,
+                        EmailConfirmed = true,
+                        Avatar = avatarUrl
+                    };
+                    var createResult = await _userManager.CreateAsync(user);
+                    if (!createResult.Succeeded)
+                    {
+                        user.UserName = $"{name}_{githubId.Substring(0, Math.Min(4, githubId.Length))}";
+                        await _userManager.CreateAsync(user);
+                    }
+                }
+                await _userManager.AddLoginAsync(user, info);
+
+                // Đảm bảo avatar được lưu đúng
+                user.Avatar = avatarUrl;
+                await _userManager.UpdateAsync(user);
+            }
+
+            var token = accountRepo.GenerateJwtToken(user);
+
+            // Thông báo User online qua SignalR
+            var userInfo = new { userId = user.Id, userName = user.UserName, avatar = user.Avatar };
+            await _hubContext.Clients.All.SendAsync("ReceiveOnlineUsers", new[] { userInfo });
+
+            // Lấy FrontendUrl từ cấu hình
+            var frontendUrl = _configuration["FrontendUrl"]?.TrimEnd('/');
+
+            if (string.IsNullOrEmpty(frontendUrl) || frontendUrl.Contains("your-frontend-domain"))
+            {
+                frontendUrl = "https://notaion.onrender.com";
+            }
+
+            return Redirect($"{frontendUrl}/login-success?token={token}");
+        }
+
         // ============================================================
-        // ACCOUNT LINKING — link/unlink external providers (Discord, ...)
+        // ACCOUNT LINKING — link/unlink external providers (Discord, GitHub, ...)
         // to the CURRENT account, and list what's linked.
         // Uses ASP.NET Identity's AspNetUserLogins table (no new schema).
         // ============================================================
@@ -404,6 +495,74 @@ namespace WebAPI.Controllers
             }
 
             return Redirect($"{returnUrl}?link=success&provider=Discord");
+        }
+
+        [HttpGet("github-link")]
+        public IActionResult GitHubLink([FromQuery] string token, [FromQuery] string returnUrl = null)
+        {
+            var clientId = _configuration["Authentication:GitHub:AppId"];
+            if (string.IsNullOrEmpty(clientId) || clientId == "YOUR_GITHUB_CLIENT_ID")
+                return BadRequest("GitHub Authentication is not configured on the server.");
+
+            var userId = ValidateTokenGetUserId(token);
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized("Invalid or expired token.");
+
+            var properties = _signInManager.ConfigureExternalAuthenticationProperties("GitHub", Url.Action("GitHubLinkCallback"));
+            properties.Items["LinkUserId"] = userId;
+            properties.Items["LinkReturnUrl"] = ResolveLinkReturnUrl(returnUrl);
+            return Challenge(properties, "GitHub");
+        }
+
+        [HttpGet("github-link-callback")]
+        public async Task<IActionResult> GitHubLinkCallback()
+        {
+            var info = await _signInManager.GetExternalLoginInfoAsync();
+
+            var returnUrl = "https://notaion.onrender.com/setting";
+            if (info?.AuthenticationProperties != null &&
+                info.AuthenticationProperties.Items.TryGetValue("LinkReturnUrl", out var ru) &&
+                !string.IsNullOrEmpty(ru))
+            {
+                returnUrl = ru;
+            }
+
+            if (info == null)
+                return Redirect($"{returnUrl}?link=error");
+
+            info.AuthenticationProperties.Items.TryGetValue("LinkUserId", out var userId);
+            if (string.IsNullOrEmpty(userId))
+                return Redirect($"{returnUrl}?link=error");
+
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null)
+                return Redirect($"{returnUrl}?link=error");
+
+            // If this external login is already attached to someone, don't steal it.
+            var existing = await _userManager.FindByLoginAsync(info.LoginProvider, info.ProviderKey);
+            if (existing != null)
+            {
+                return existing.Id == user.Id
+                    ? Redirect($"{returnUrl}?link=already&provider=GitHub")
+                    : Redirect($"{returnUrl}?link=conflict&provider=GitHub");
+            }
+
+            var addResult = await _userManager.AddLoginAsync(user, info);
+            if (!addResult.Succeeded)
+                return Redirect($"{returnUrl}?link=error");
+
+            // Adopt the GitHub avatar only if the account has none yet.
+            var githubId = info.Principal.FindFirstValue(ClaimTypes.NameIdentifier);
+            var avatarUrl = string.IsNullOrEmpty(githubId)
+                ? null
+                : $"https://avatars.githubusercontent.com/u/{githubId}?v=4";
+            if (!string.IsNullOrEmpty(avatarUrl) && string.IsNullOrEmpty(user.Avatar))
+            {
+                user.Avatar = avatarUrl;
+                await _userManager.UpdateAsync(user);
+            }
+
+            return Redirect($"{returnUrl}?link=success&provider=GitHub");
         }
 
         [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
