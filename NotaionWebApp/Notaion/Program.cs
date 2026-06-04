@@ -113,10 +113,10 @@ builder.Services.AddAuthentication(options =>
             options.ClientId = builder.Configuration["Authentication:GitHub:AppId"] ?? "";
             options.ClientSecret = builder.Configuration["Authentication:GitHub:AppSecret"] ?? "";
             options.SaveTokens = true;
-            // Cố tình KHÔNG thêm scope "user:email": handler chỉ gọi endpoint
-            // /user/emails khi có scope này, và endpoint đó báo lỗi với GitHub App
-            // (thiếu permission Email addresses). Controller đã có fallback email
-            // giả {githubId}@github.com nên không cần email thật.
+            // Lấy email thật từ GitHub. Yêu cầu dùng OAuth App (không phải GitHub
+            // App) — OAuth App đọc được /user/emails. Nếu thiếu permission này thì
+            // controller vẫn fallback sang email giả {githubId}@github.com.
+            options.Scope.Add("user:email");
         });
 builder.Services.AddAuthorization();
 builder.Services.AddSignalR().AddHubOptions<ChatHub>(options =>
