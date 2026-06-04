@@ -1,39 +1,39 @@
-🌐 **English** | [Tiếng Việt](jenkins-docker-guide.vi.md)
+[English](jenkins-docker-guide.md) | 🌐 **Tiếng Việt**
 
-# 🚀 Jenkins + Docker + MonsterASP — CI/CD Guide
+# 🚀 Jenkins + Docker + MonsterASP — Hướng dẫn CI/CD
 
-> Last updated: 2026-06-04 — Project: notaion-backend (.NET 9)
+> Cập nhật lần cuối: 04/06/2026 — Project: notaion-backend (.NET 9)
 
 ---
 
-## 📋 Table of contents
+## 📋 Mục lục
 
-1. [Architecture overview](#architecture-overview)
-2. [Requirements](#requirements)
-3. [Install Jenkins with Docker Compose](#install-jenkins-with-docker-compose)
-4. [First-time Jenkins setup](#first-time-jenkins-setup)
-5. [Dockerfile for .NET 9](#dockerfile-for-net-9)
-6. [Complete Jenkinsfile](#complete-jenkinsfile)
-7. [Pipeline stages explained](#pipeline-stages-explained)
-8. [Credentials in Jenkins](#credentials-in-jenkins)
-9. [Deploy-check API](#deploy-check-api)
-10. [Useful Docker commands](#useful-docker-commands)
+1. [Kiến trúc tổng quan](#kiến-trúc-tổng-quan)
+2. [Yêu cầu](#yêu-cầu)
+3. [Cài đặt Jenkins bằng Docker Compose](#cài-đặt-jenkins-bằng-docker-compose)
+4. [Cấu hình Jenkins lần đầu](#cấu-hình-jenkins-lần-đầu)
+5. [Dockerfile cho .NET 9](#dockerfile-cho-net-9)
+6. [Jenkinsfile hoàn chỉnh](#jenkinsfile-hoàn-chỉnh)
+7. [Giải thích các stage](#giải-thích-các-stage)
+8. [Credentials trong Jenkins](#credentials-trong-jenkins)
+9. [API kiểm tra deploy](#api-kiểm-tra-deploy)
+10. [Lệnh Docker hữu ích](#lệnh-docker-hữu-ích)
 11. [Troubleshooting](#troubleshooting)
 
 ---
 
-## Architecture overview
+## Kiến trúc tổng quan
 
 ```mermaid
 flowchart TD
-    DEV(["👨‍💻 git push origin main"]) --> WH["📡 GitHub Webhook<br/>githubPush trigger"]
+    DEV(["👨‍💻 git push origin main"]) --> WH["📡 GitHub Webhook<br/>trigger githubPush"]
     WH --> S1["📥 Cloning<br/>git clone main"]
     S1 --> S2["🐳 Build Docker Image<br/>.NET 9 multi-stage"]
-    S2 --> S3["📦 Extract Publish Output<br/>docker cp /app to publish_output"]
-    S3 --> S4["🌐 Deploy to MonsterASP<br/>FTP via lftp + app_offline page"]
-    S4 --> S5["📤 Push to Docker Hub<br/>mtaidev/notaion-backend"]
-    S5 --> S6["🚀 Deploy Local Container<br/>host 8081 to container 8080"]
-    S6 --> OK(["✅ App running, latest version"])
+    S2 --> S3["📦 Extract Publish Output<br/>docker cp /app sang publish_output"]
+    S3 --> S4["🌐 Deploy lên MonsterASP<br/>FTP bằng lftp + trang app_offline"]
+    S4 --> S5["📤 Push lên Docker Hub<br/>mtaidev/notaion-backend"]
+    S5 --> S6["🚀 Deploy container local<br/>host 8081 sang container 8080"]
+    S6 --> OK(["✅ App chạy phiên bản mới nhất"])
 
     classDef trig fill:#eef2ff,stroke:#6366f1,color:#3730a3;
     classDef ci fill:#eff6ff,stroke:#3b82f6,color:#1e40af;
@@ -45,16 +45,16 @@ flowchart TD
     class OK ok
 ```
 
-> Note: deployment to MonsterASP uses **FTP (lftp)**, not WebDeploy. The pipeline extracts the published files from the Docker image, then mirrors them over FTP behind a short `app_offline.htm` maintenance page.
+> Lưu ý: deploy lên MonsterASP dùng **FTP (lftp)**, không phải WebDeploy. Pipeline lấy file publish từ Docker image rồi mirror qua FTP, có bật trang bảo trì `app_offline.htm` trong lúc deploy.
 
 ---
 
-## Requirements
+## Yêu cầu
 
-| Tool | Version |
+| Công cụ | Phiên bản |
 |---|---|
-| Docker Desktop | 24.x or newer |
-| Docker Compose | v2.x or newer |
+| Docker Desktop | 24.x trở lên |
+| Docker Compose | v2.x trở lên |
 | PowerShell | 7.x (pwsh) |
 
 ```powershell
@@ -64,9 +64,9 @@ docker compose version
 
 ---
 
-## Install Jenkins with Docker Compose
+## Cài đặt Jenkins bằng Docker Compose
 
-### Step 1 — Create the folder and compose file
+### Bước 1 — Tạo thư mục và file compose
 
 ```powershell
 mkdir C:\jenkins-docker
@@ -74,7 +74,7 @@ cd C:\jenkins-docker
 notepad docker-compose.yml
 ```
 
-`docker-compose.yml`:
+Nội dung `docker-compose.yml`:
 
 ```yaml
 version: '3.8'
@@ -95,37 +95,37 @@ volumes:
   jenkins_home:
 ```
 
-### Step 2 — Start Jenkins
+### Bước 2 — Khởi chạy Jenkins
 
 ```powershell
 docker compose up -d
 ```
 
-### Step 3 — Get the first-time admin password
+### Bước 3 — Lấy mật khẩu admin lần đầu
 
 ```powershell
 docker exec jenkins cat /var/jenkins_home/secrets/initialAdminPassword
 ```
 
-### Step 4 — Install Docker CLI, lftp and zip inside the Jenkins container
+### Bước 4 — Cài Docker CLI, lftp và zip vào Jenkins container
 
 ```powershell
 docker exec -u root jenkins bash -c "apt-get update && apt-get install -y docker.io lftp zip"
 docker exec -u root jenkins chmod 666 /var/run/docker.sock
 ```
 
-### Step 5 — Open Jenkins
+### Bước 5 — Truy cập Jenkins
 
-Browse to **http://localhost:8080**
+Mở trình duyệt: **http://localhost:8080**
 
 ---
 
-## First-time Jenkins setup
+## Cấu hình Jenkins lần đầu
 
-1. Enter the admin password from Step 3
-2. Choose **"Install suggested plugins"**
-3. Create the admin account
-4. Install extra plugins:
+1. Nhập mật khẩu admin từ bước 3
+2. Chọn **"Install suggested plugins"**
+3. Tạo tài khoản admin
+4. Cài thêm plugins:
 
 ```
 Manage Jenkins → Plugins → Available plugins
@@ -137,9 +137,9 @@ Manage Jenkins → Plugins → Available plugins
 
 ---
 
-## Dockerfile for .NET 9
+## Dockerfile cho .NET 9
 
-Create `Dockerfile` at the **repo root** (next to the `Jenkinsfile`):
+Tạo file `Dockerfile` ở **root repo** (cùng cấp `Jenkinsfile`):
 
 ```dockerfile
 FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS base
@@ -165,9 +165,9 @@ ENTRYPOINT ["dotnet", "Notaion.dll"]
 
 ---
 
-## Complete Jenkinsfile
+## Jenkinsfile hoàn chỉnh
 
-This mirrors the live [`Jenkinsfile`](Jenkinsfile) at the repo root.
+Khớp với file [`Jenkinsfile`](Jenkinsfile) thực tế ở root repo.
 
 ```groovy
 pipeline {
@@ -192,7 +192,7 @@ pipeline {
 
         stage('Cloning') {
             steps {
-                echo '📥 Cloning source code...'
+                echo '📥 Đang clone source code...'
                 git branch: 'main',
                     credentialsId: '3ceb09c4-d257-4d6b-b65c-26db994addff',
                     url: 'https://github.com/mtai0524/notaion-backend.git'
@@ -201,7 +201,7 @@ pipeline {
 
         stage('Build Docker Image') {
             steps {
-                echo '🐳 Building Docker image...'
+                echo '🐳 Đang build Docker image...'
                 sh """
                     docker build -t ${DOCKER_HUB_USER}/${IMAGE_NAME}:${IMAGE_TAG} .
                     docker tag ${DOCKER_HUB_USER}/${IMAGE_NAME}:${IMAGE_TAG} \
@@ -212,13 +212,13 @@ pipeline {
 
         stage('Extract Publish Output') {
             steps {
-                echo '📦 Extracting publish files from the Docker image...'
+                echo '📦 Lấy files publish từ Docker image...'
                 sh """
                     rm -rf ${PUBLISH_DIR}
                     docker create --name temp_extract ${DOCKER_HUB_USER}/${IMAGE_NAME}:latest
                     docker cp temp_extract:/app ${PUBLISH_DIR}
                     docker rm temp_extract
-                    echo "✅ Publish files:"
+                    echo "✅ Files publish:"
                     ls -la ${PUBLISH_DIR}
                 """
             }
@@ -226,7 +226,7 @@ pipeline {
 
         stage('Deploy to MonsterASP (FTP)') {
             steps {
-                echo '🌐 Deploying to MonsterASP over FTP...'
+                echo '🌐 Đang deploy lên MonsterASP qua FTP...'
                 withCredentials([usernamePassword(
                     credentialsId: 'monsterasp-ftp-creds',
                     usernameVariable: 'FTP_USER',
@@ -251,7 +251,7 @@ rm -f /wwwroot/app_offline.htm
 bye
 LFTP
 
-                        echo "✅ FTP deploy complete!"
+                        echo "✅ FTP deploy hoàn tất!"
                     '''
                 }
             }
@@ -259,7 +259,7 @@ LFTP
 
         stage('Push to Docker Hub') {
             steps {
-                echo '📤 Pushing image to Docker Hub...'
+                echo '📤 Đang push image lên Docker Hub...'
                 withCredentials([usernamePassword(
                     credentialsId: 'dockerhub-creds',
                     usernameVariable: 'DOCKER_USER',
@@ -276,7 +276,7 @@ LFTP
 
         stage('Deploy Container (local)') {
             steps {
-                echo '🚀 Running the container locally...'
+                echo '🚀 Đang chạy container local...'
                 sh """
                     docker stop ${CONTAINER_NAME} || true
                     docker rm   ${CONTAINER_NAME} || true
@@ -295,15 +295,15 @@ LFTP
 
     post {
         success {
-            echo "✅ Deploy succeeded! Build #${BUILD_NUMBER}"
+            echo "✅ Deploy thành công! Build #${BUILD_NUMBER}"
             echo "🌐 Local:      http://localhost:${APP_PORT}/api/DeployInfo/info"
             echo "🌐 MonsterASP: http://notaion.runasp.net/api/DeployInfo/info"
         }
         failure {
-            echo "❌ Deploy failed at Build #${BUILD_NUMBER} - check the logs!"
+            echo "❌ Deploy thất bại tại Build #${BUILD_NUMBER} - Kiểm tra log!"
         }
         always {
-            echo '🧹 Cleaning up...'
+            echo '🧹 Dọn dẹp...'
             sh """
                 rm -rf ${PUBLISH_DIR}
                 docker image prune -f
@@ -315,39 +315,39 @@ LFTP
 
 ---
 
-## Pipeline stages explained
+## Giải thích các stage
 
-| # | Stage | What it does | Tooling |
+| # | Stage | Làm gì | Công cụ |
 |---|---|---|---|
-| 1 | **Cloning** | Clone the `main` branch from GitHub | `git` |
-| 2 | **Build Docker Image** | Multi-stage .NET 9 build, tagged `:BUILD_NUMBER` + `:latest` | Docker |
-| 3 | **Extract Publish Output** | `docker create` a throwaway container and `docker cp` `/app` into `PUBLISH_DIR` | `docker cp` |
-| 4 | **Deploy to MonsterASP (FTP)** | Put `app_offline.htm`, `lftp mirror -R --delete` the publish output to `/wwwroot`, then remove the offline page | `lftp` |
-| 5 | **Push to Docker Hub** | `docker login` then push `:BUILD_NUMBER` and `:latest` | Docker Hub |
-| 6 | **Deploy Container (local)** | Stop/remove the old container, `docker run` the new image on host `8081` → container `8080` | Docker |
-| 🔁 | **post.success** | Echo the local + MonsterASP `DeployInfo` URLs | Jenkins |
-| 🔁 | **post.failure** | Report the failed build number | Jenkins |
-| 🔁 | **post.always** | Remove `PUBLISH_DIR` and run `docker image prune -f` | Jenkins |
+| 1 | **Cloning** | Clone nhánh `main` từ GitHub | `git` |
+| 2 | **Build Docker Image** | Build .NET 9 multi-stage, gắn tag `:BUILD_NUMBER` + `:latest` | Docker |
+| 3 | **Extract Publish Output** | `docker create` container tạm rồi `docker cp` `/app` vào `PUBLISH_DIR` | `docker cp` |
+| 4 | **Deploy to MonsterASP (FTP)** | Put `app_offline.htm`, `lftp mirror -R --delete` output lên `/wwwroot`, rồi xoá trang offline | `lftp` |
+| 5 | **Push to Docker Hub** | `docker login` rồi push `:BUILD_NUMBER` và `:latest` | Docker Hub |
+| 6 | **Deploy Container (local)** | Dừng/xoá container cũ, `docker run` image mới ở host `8081` → container `8080` | Docker |
+| 🔁 | **post.success** | In URL `DeployInfo` của local + MonsterASP | Jenkins |
+| 🔁 | **post.failure** | Báo số build bị lỗi | Jenkins |
+| 🔁 | **post.always** | Xoá `PUBLISH_DIR` và chạy `docker image prune -f` | Jenkins |
 
 ---
 
-## Credentials in Jenkins
+## Credentials trong Jenkins
 
 ```
 Manage Jenkins → Credentials → System → Global credentials → Add Credentials
 ```
 
-| ID | Kind | Username | Used for |
+| ID | Kind | Username | Dùng cho |
 |---|---|---|---|
-| `dockerhub-creds` | Username/Password | `mtaidev` | Push to Docker Hub |
-| `monsterasp-ftp-creds` | Username/Password | `site8642` | Deploy to MonsterASP over FTP |
-| `3ceb09c4-…addff` | Username/Password (GitHub) | — | Clone the private repo |
+| `dockerhub-creds` | Username/Password | `mtaidev` | Push Docker Hub |
+| `monsterasp-ftp-creds` | Username/Password | `site8642` | Deploy MonsterASP qua FTP |
+| `3ceb09c4-…addff` | Username/Password (GitHub) | — | Clone repo private |
 
 ---
 
-## Deploy-check API
+## API kiểm tra deploy
 
-Add `DeployInfoController.cs` to the project:
+Thêm `DeployInfoController.cs` vào project:
 
 ```csharp
 [ApiController]
@@ -369,13 +369,13 @@ public class DeployInfoController : ControllerBase
 }
 ```
 
-Call it:
+Gọi API kiểm tra:
 ```
 http://localhost:8081/api/DeployInfo/info
 http://notaion.runasp.net/api/DeployInfo/info
 ```
 
-Sample response:
+Kết quả mẫu:
 ```json
 {
   "status": "✅ Running",
@@ -388,35 +388,35 @@ Sample response:
 
 ---
 
-## Useful Docker commands
+## Lệnh Docker hữu ích
 
 ```powershell
-# Start Jenkins
+# Khởi động Jenkins
 docker compose up -d
 
-# Stop Jenkins
+# Dừng Jenkins
 docker compose down
 
-# Tail Jenkins logs
+# Xem log Jenkins
 docker logs -f jenkins
 
-# Tail app logs
+# Xem log app
 docker logs -f notaion-backend
 
-# Container status
+# Xem trạng thái container
 docker ps
 
-# Shell into the Jenkins container (to install tools)
+# Vào trong container Jenkins (cài thêm tool)
 docker exec -u root -it jenkins bash
 
-# Install docker CLI, lftp and zip into Jenkins (run once)
+# Cài docker cli, lftp và zip vào Jenkins (chạy 1 lần)
 docker exec -u root jenkins bash -c "apt-get update && apt-get install -y docker.io lftp zip"
 docker exec -u root jenkins chmod 666 /var/run/docker.sock
 
-# Remove unused images
+# Dọn dẹp images không dùng
 docker image prune -f
 
-# Full cleanup
+# Dọn dẹp toàn bộ
 docker system prune -f
 ```
 
@@ -424,46 +424,46 @@ docker system prune -f
 
 ## Troubleshooting
 
-### Jenkins can't find docker
+### Jenkins không tìm thấy docker
 ```powershell
 docker exec -u root jenkins bash -c "apt-get update && apt-get install -y docker.io"
 docker exec -u root jenkins chmod 666 /var/run/docker.sock
 ```
 
-### Jenkins can't find lftp
+### Jenkins không tìm thấy lftp
 ```powershell
 docker exec -u root jenkins apt-get install -y lftp
 ```
 
-### FTP deploy hangs or times out
+### FTP deploy bị treo hoặc timeout
 ```
-# Make sure passive mode + EPSV settings are present in the lftp block:
+# Đảm bảo có các cấu hình passive mode + EPSV trong block lftp:
 set ftp:passive-mode on
 set ftp:prefer-epsv no
 set net:max-retries 5
 set net:timeout 60
 ```
 
-### App is not reachable
+### App không truy cập được
 ```powershell
-# Check which port the app listens on
+# Kiểm tra port app đang lắng nghe
 docker logs notaion-backend
 
-# If it listens on 8080, map the port correctly
+# Nếu app lắng nghe 8080, map đúng port
 docker run -p 8081:8080 mtaidev/notaion-backend:latest
 ```
 
-### DEPLOY_TIME with a space breaks `docker run`
+### DEPLOY_TIME có dấu cách làm vỡ lệnh docker run
 ```groovy
-// Wrap the -e value in double quotes
+// Dùng dấu ngoặc kép bao quanh giá trị -e
 -e "DEPLOY_TIME=\$(date '+%Y-%m-%d %H:%M:%S')"
 ```
 
-### Reset the Jenkins admin password
+### Reset mật khẩu admin Jenkins
 ```powershell
 docker exec jenkins cat /var/jenkins_home/secrets/initialAdminPassword
 ```
 
 ---
 
-*This document is kept in sync with the real setup of the notaion-backend project.*
+*Tài liệu được giữ đồng bộ với setup thực tế của project notaion-backend.*
