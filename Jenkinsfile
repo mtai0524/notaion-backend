@@ -38,19 +38,20 @@ pipeline {
             }
         }
 
-        stage('Extract Publish Output') {
-            steps {
-                echo '📦 Lấy files publish từ Docker image...'
-                sh """
-                    rm -rf ${PUBLISH_DIR}
-                    docker create --name temp_extract ${DOCKER_HUB_USER}/${IMAGE_NAME}:latest
-                    docker cp temp_extract:/app ${PUBLISH_DIR}
-                    docker rm temp_extract
-                    echo "✅ Files publish:"
-                    ls -la ${PUBLISH_DIR}
-                """
-            }
-        }
+       stage('Extract Publish Output') {
+    steps {
+        echo '📦 Lấy files publish từ Docker image...'
+        sh """
+            rm -rf ${PUBLISH_DIR}
+            mkdir -p ${PUBLISH_DIR}
+            docker create --name temp_extract ${DOCKER_HUB_USER}/${IMAGE_NAME}:latest
+            docker cp temp_extract:/app/. ${PUBLISH_DIR}   # thêm /. ở đây
+            docker rm temp_extract
+            echo "✅ Publish files:"
+            ls -la ${PUBLISH_DIR}
+        """
+    }
+}
 
         stage('Deploy to MonsterASP (FTP)') {
             steps {
