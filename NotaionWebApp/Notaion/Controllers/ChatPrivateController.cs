@@ -87,6 +87,76 @@ namespace Notaion.API.Controllers
         }
 
 
+        public class ChatSearchResult
+        {
+            public string FriendId { get; set; }
+            public string FriendUserName { get; set; }
+            public string FriendAvatar { get; set; }
+            public string Content { get; set; }
+            public string Snippet { get; set; }
+            public DateTime SentDate { get; set; }
+            public bool FromMe { get; set; }
+        }
+
+        // Full-text search across ALL of the current user's private conversations.
+        // Messages are encrypted at rest, so we must decrypt in-memory before matching —
+        // a SQL LIKE on Content would only ever match ciphertext.
+        [HttpGet("search/{currentUserId}")]
+        public async Task<IActionResult> SearchChats(string currentUserId, [FromQuery] string keyword)
+        {
+            if (string.IsNullOrWhiteSpace(keyword))
+            {
+                return Ok(new List<ChatSearchResult>());
+            }
+
+            var chats = await _context.ChatPrivate
+                .Where(c => c.Sender == currentUserId || c.Receiver == currentUserId)
+                .OrderByDescending(c => c.SentDate)
+                .ToListAsync();
+
+            var matches = new List<ChatSearchResult>();
+            foreach (var chat in chats)
+            {
+                var content = SafeDecrypt(chat.Content);
+                if (string.IsNullOrEmpty(content)) continue;
+
+                var idx = content.IndexOf(keyword, StringComparison.OrdinalIgnoreCase);
+                if (idx < 0) continue;
+
+                // Build a short snippet centred on the match.
+                var start = Math.Max(0, idx - 30);
+                var len = Math.Min(content.Length - start, keyword.Length + 60);
+                var snippet = (start > 0 ? "…" : "") + content.Substring(start, len).Trim()
+                              + (start + len < content.Length ? "…" : "");
+
+                matches.Add(new ChatSearchResult
+                {
+                    FriendId = chat.Sender == currentUserId ? chat.Receiver : chat.Sender,
+                    Content = content,
+                    Snippet = snippet,
+                    SentDate = chat.SentDate ?? DateTime.MinValue,
+                    FromMe = chat.Sender == currentUserId,
+                });
+            }
+
+            // Attach friend display info (username + avatar) in one round-trip.
+            var friendIds = matches.Select(m => m.FriendId).Distinct().ToList();
+            var users = await _context.User
+                .Where(u => friendIds.Contains(u.Id))
+                .ToDictionaryAsync(u => u.Id);
+
+            foreach (var m in matches)
+            {
+                if (m.FriendId != null && users.TryGetValue(m.FriendId, out var u))
+                {
+                    m.FriendUserName = u.UserName;
+                    m.FriendAvatar = u.Avatar;
+                }
+            }
+
+            return Ok(matches);
+        }
+
         [HttpPost("add-chat-private")]
         public async Task<IActionResult> AddChat([FromBody] ChatPrivateViewModel chatViewModel)
         {
