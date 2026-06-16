@@ -19,23 +19,36 @@ namespace Notaion.Hubs
 
         private static DateTime VietnamNow()
         {
-            var tz = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
-            return TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, tz);
+            try
+            {
+                var tz = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
+                return TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, tz);
+            }
+            catch (TimeZoneNotFoundException)
+            {
+                // Linux without the Windows TZ alias — fall back to a fixed +7 offset.
+                return DateTime.UtcNow.AddHours(7);
+            }
         }
 
         // Persist the user's last-seen time and return the stamp so callers can
-        // broadcast it to other clients.
+        // broadcast it to other clients. Errors are logged (not swallowed) so a
+        // bad write is visible instead of silently leaving LastSeen null.
         private async Task<DateTime> TouchLastSeenAsync(string userId)
         {
             var now = VietnamNow();
-            if (!string.IsNullOrEmpty(userId))
+            if (string.IsNullOrEmpty(userId)) return now;
+
+            try
             {
-                var user = await _context.User.FirstOrDefaultAsync(u => u.Id == userId);
-                if (user != null)
-                {
-                    user.LastSeen = now;
-                    await _context.SaveChangesAsync();
-                }
+                var rows = await _context.User
+                    .Where(u => u.Id == userId)
+                    .ExecuteUpdateAsync(s => s.SetProperty(u => u.LastSeen, now));
+                Console.WriteLine($"[ChatHub] LastSeen updated for {userId}: {now:O} (rows={rows})");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[ChatHub] LastSeen update FAILED for {userId}: {ex.Message}");
             }
             return now;
         }
@@ -88,9 +101,14 @@ namespace Notaion.Hubs
 
 
 
-        public async Task RegisterUser(RegisterUserModel user) // react call RegisterUser with invoke 
+        public async Task RegisterUser(RegisterUserModel user) // react call RegisterUser with invoke
         {
             OnlineUsers.TryAdd(Context.ConnectionId, (user.UserId, user.UserName, user.Avatar));
+
+            // Stamp LastSeen on connect as well, so the column always has a value
+            // even if the disconnect event is never delivered (tab crash, server
+            // restart, ungraceful drop).
+            await TouchLastSeenAsync(user.UserId);
 
             var userList = OnlineUsers.Values.Select(u => new { u.UserId, u.UserName, u.Avatar }).ToList();
 
