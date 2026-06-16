@@ -46,6 +46,7 @@ namespace Notaion.Infrastructure.Context
         public DbSet<Page> Page { get; set; }
         public DbSet<Chat> Chat { get; set; }
         public DbSet<ChatPrivate> ChatPrivate { get; set; }
+        public DbSet<AiChat> AiChats { get; set; }
         public DbSet<Notification> Notification{ get; set; }
         public DbSet<FriendShip> FriendShip { get; set; }
         public DbSet<DailyNote> DailyNotes { get; set; }
