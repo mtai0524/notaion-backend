@@ -1,5 +1,7 @@
 ﻿using Microsoft.AspNetCore.SignalR;
 using Microsoft.CodeAnalysis.Elfie.Serialization;
+using Microsoft.EntityFrameworkCore;
+using Notaion.Infrastructure.Context;
 using Notaion.Models;
 using System.Collections.Concurrent;
 using System.Security.Claims;
@@ -8,6 +10,36 @@ namespace Notaion.Hubs
 {
     public class ChatHub : Hub
     {
+        private readonly ApplicationDbContext _context;
+
+        public ChatHub(ApplicationDbContext context)
+        {
+            _context = context;
+        }
+
+        private static DateTime VietnamNow()
+        {
+            var tz = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
+            return TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, tz);
+        }
+
+        // Persist the user's last-seen time and return the stamp so callers can
+        // broadcast it to other clients.
+        private async Task<DateTime> TouchLastSeenAsync(string userId)
+        {
+            var now = VietnamNow();
+            if (!string.IsNullOrEmpty(userId))
+            {
+                var user = await _context.User.FirstOrDefaultAsync(u => u.Id == userId);
+                if (user != null)
+                {
+                    user.LastSeen = now;
+                    await _context.SaveChangesAsync();
+                }
+            }
+            return now;
+        }
+
         //public async Task SendFriendRequest(string receiverConnectionId, string senderId, string receiverId, string senderName)
         //{
         //    await Clients.Client(receiverConnectionId).SendAsync("ReceiveFriendRequest", senderId, receiverId, senderName);
@@ -71,13 +103,20 @@ namespace Notaion.Hubs
         {
             if (OnlineUsers.TryRemove(Context.ConnectionId, out var user))
             {
-                await Clients.All.SendAsync("UserDisconnected", user.UserId);
+                // Only flip to "offline" once the user has no other live connections
+                // (e.g. multiple tabs) — otherwise last-seen would be wrong.
+                var stillOnline = OnlineUsers.Values.Any(u => u.UserId == user.UserId);
+                if (!stillOnline)
+                {
+                    var lastSeen = await TouchLastSeenAsync(user.UserId);
+                    await Clients.All.SendAsync("UserDisconnected", user.UserId, lastSeen);
+                }
             }
 
             await base.OnDisconnectedAsync(exception);
         }
 
-        public async Task LogoutUser(string userId) // react call LogoutUser with invoke 
+        public async Task LogoutUser(string userId) // react call LogoutUser with invoke
         {
             // find user by userId
             var userConnectionId = OnlineUsers.FirstOrDefault(x => x.Value.UserId == userId).Key;
@@ -86,7 +125,12 @@ namespace Notaion.Hubs
             {
                 OnlineUsers.TryRemove(userConnectionId, out var removedUser);
 
-                await Clients.All.SendAsync("UserDisconnected", removedUser.UserId);
+                var stillOnline = OnlineUsers.Values.Any(u => u.UserId == removedUser.UserId);
+                if (!stillOnline)
+                {
+                    var lastSeen = await TouchLastSeenAsync(removedUser.UserId);
+                    await Clients.All.SendAsync("UserDisconnected", removedUser.UserId, lastSeen);
+                }
             }
         }
 

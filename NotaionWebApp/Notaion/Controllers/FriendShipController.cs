@@ -64,9 +64,11 @@ namespace Notaion.Controllers
                 SenderId = f.SenderId,
                 SenderUserName = f.SenderUser?.UserName,
                 SenderAvatar =f.SenderUser?.Avatar,
+                SenderLastSeen = f.SenderUser?.LastSeen,
                 ReceiverId = f.ReceiverId,
                 ReceiverUserName =f.ReceiverUser?.UserName,
                 ReceiverAvatar =  f.ReceiverUser?.Avatar,
+                ReceiverLastSeen = f.ReceiverUser?.LastSeen,
                 CreatedAt = f.CreatedAt,
                 UpdatedAt = f.UpdatedAt
             });
