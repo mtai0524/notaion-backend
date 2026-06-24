@@ -38,21 +38,21 @@ pipeline {
             }
         }
 
-   stage('Extract Publish Output') {
-    steps {
-        echo '📦 Lấy files publish từ Docker image...'
-        sh """
-            rm -rf ${PUBLISH_DIR}
-            mkdir -p ${PUBLISH_DIR}
-            docker rm -f temp_extract || true
-            docker create --name temp_extract ${DOCKER_HUB_USER}/${IMAGE_NAME}:latest
-            docker cp temp_extract:/app/. ${PUBLISH_DIR}
-            docker rm temp_extract
-            echo "✅ Publish files:"
-            ls -la ${PUBLISH_DIR}
-        """
-    }
-}
+        stage('Extract Publish Output') {
+            steps {
+                echo '📦 Lấy files publish từ Docker image...'
+                sh """
+                    rm -rf ${PUBLISH_DIR}
+                    mkdir -p ${PUBLISH_DIR}
+                    docker rm -f temp_extract || true
+                    docker create --name temp_extract ${DOCKER_HUB_USER}/${IMAGE_NAME}:latest
+                    docker cp temp_extract:/app/. ${PUBLISH_DIR}
+                    docker rm temp_extract
+                    echo "✅ Publish files:"
+                    ls -la ${PUBLISH_DIR}
+                """
+            }
+        }
 
         stage('Deploy to MonsterASP (FTP)') {
             steps {
@@ -83,23 +83,6 @@ LFTP
 
                         echo "✅ FTP deploy hoàn tất!"
                     '''
-                }
-            }
-        }
-
-        stage('Push to Docker Hub') {
-            steps {
-                echo '📤 Đang push image lên Docker Hub...'
-                withCredentials([usernamePassword(
-                    credentialsId: 'dockerhub-creds',
-                    usernameVariable: 'DOCKER_USER',
-                    passwordVariable: 'DOCKER_PASS'
-                )]) {
-                    sh """
-                        echo \$DOCKER_PASS | docker login -u \$DOCKER_USER --password-stdin
-                        docker push ${DOCKER_HUB_USER}/${IMAGE_NAME}:${IMAGE_TAG}
-                        docker push ${DOCKER_HUB_USER}/${IMAGE_NAME}:latest
-                    """
                 }
             }
         }
