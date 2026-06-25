@@ -16,13 +16,15 @@ pipeline {
         githubPush()
     }
 
-    stage('Fix Docker Permission') {
-        steps {
-            sh 'chmod 666 /var/run/docker.sock'
-        }
-    }
+   
 
     stages {
+
+        stage('Fix Docker Permission') {
+            steps {
+                sh 'chmod 666 /var/run/docker.sock'
+            }
+        }
 
         stage('Cloning') {
             steps {
