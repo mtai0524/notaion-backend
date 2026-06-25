@@ -26,6 +26,15 @@ pipeline {
             }
         }
 
+        stage('Install Dependencies') {
+            steps {
+                sh '''
+                    apt-get update -qq
+                    apt-get install -y -qq lftp
+                '''
+            }
+        }
+
         stage('Cloning') {
             steps {
                 echo '📥 Đang clone source code...'
