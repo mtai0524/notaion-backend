@@ -112,6 +112,24 @@ LFTP
                 """
             }
         }
+
+        
+        stage('Push to Docker Hub') {
+            steps {
+                echo '📤 Đang push image lên Docker Hub...'
+                withCredentials([usernamePassword(
+                    credentialsId: 'dockerhub-creds',
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS'
+                )]) {
+                    sh """
+                        echo \$DOCKER_PASS | docker login -u \$DOCKER_USER --password-stdin
+                        docker push ${DOCKER_HUB_USER}/${IMAGE_NAME}:${IMAGE_TAG}
+                        docker push ${DOCKER_HUB_USER}/${IMAGE_NAME}:latest
+                    """
+                }
+            }
+        }
     }
 
     post {
