@@ -51,6 +51,11 @@ namespace Notaion.Domain.Entities
         // Deletion/Hiding
         public bool IsDeleted { get; set; }
 
+        // Deadline reminders
+        public DateTime? Deadline { get; set; }
+        public int? ReminderLeadMinutes { get; set; }
+        public bool ReminderDone { get; set; }
+
         // Linking (Store as comma-separated IDs or JSON)
         public string? LinkedNoteIds { get; set; }
 
