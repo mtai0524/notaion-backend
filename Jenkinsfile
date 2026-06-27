@@ -16,8 +16,6 @@ pipeline {
         githubPush()
     }
 
-   
-
     stages {
 
         stage('Fix Docker Permission') {
@@ -84,19 +82,19 @@ pipeline {
                             > /tmp/app_offline.htm
 
                         lftp -u "$FTP_USER","$FTP_PASS" ftp://site8642.siteasp.net <<LFTP
-set ssl:verify-certificate no
-set ftp:ssl-allow yes
-set ftp:passive-mode on
-set ftp:prefer-epsv no
-set net:max-retries 5
-set net:timeout 60
-set xfer:clobber yes
-set mirror:parallel-transfer-count 2
-put /tmp/app_offline.htm -o /wwwroot/app_offline.htm
-mirror -R --delete --continue --no-perms --exclude app_offline.htm /var/jenkins_home/workspace/notaion-backend/publish_output /wwwroot
-rm -f /wwwroot/app_offline.htm
-bye
-LFTP
+                        set ssl:verify-certificate no
+                        set ftp:ssl-allow yes
+                        set ftp:passive-mode on
+                        set ftp:prefer-epsv no
+                        set net:max-retries 5
+                        set net:timeout 60
+                        set xfer:clobber yes
+                        set mirror:parallel-transfer-count 2
+                        put /tmp/app_offline.htm -o /wwwroot/app_offline.htm
+                        mirror -R --delete --continue --no-perms --exclude app_offline.htm /var/jenkins_home/workspace/notaion-backend/publish_output /wwwroot
+                        rm -f /wwwroot/app_offline.htm
+                        bye
+                        LFTP
 
                         echo "✅ FTP deploy hoàn tất!"
                     '''
