@@ -12,6 +12,9 @@ namespace Notaion.Application.Interfaces.Services
         Task<FileMetadata> UploadCloudAsync(IFormFile file);
         Task<List<FileMetadata>> GetAllAsync();
         Task<(Stream stream, string contentType, string originalName)> DownloadAsync(string savedName);
+        // Proxy-download a Cloudinary-hosted file server-side (avoids the browser
+        // 401 Cloudinary returns for restricted media like PDF/ZIP).
+        Task<(Stream stream, string contentType, string originalName)> DownloadCloudAsync(string savedName);
         Task<bool> DeleteAsync(string savedName);
     }
 }
