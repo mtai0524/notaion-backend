@@ -71,9 +71,11 @@ namespace Notaion.Controllers
         }
 
         // Proxy-download a Cloudinary file through the server (fixes the 401 the
-        // browser gets for restricted media like PDF/ZIP).
-        [HttpGet("download/cloud/{savedName}")]
-        public async Task<IActionResult> DownloadCloud(string savedName)
+        // browser gets for restricted media like PDF/ZIP). savedName is a query
+        // param because a Cloudinary publicId can contain "." and "/", which
+        // break route-segment matching.
+        [HttpGet("download/cloud")]
+        public async Task<IActionResult> DownloadCloud([FromQuery] string savedName)
         {
             try
             {
