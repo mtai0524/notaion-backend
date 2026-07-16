@@ -133,37 +133,6 @@ namespace Notaion.Infrastructure.Services
             return (stream, metadata.ContentType, metadata.OriginalName);
         }
 
-        private static readonly System.Net.Http.HttpClient _http = new System.Net.Http.HttpClient();
-
-        public async Task<(Stream stream, string contentType, string originalName)> DownloadCloudAsync(string savedName)
-        {
-            FileMetadata metadata;
-            using (var scope = _scopeFactory.CreateScope())
-            {
-                var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-                metadata = await dbContext.FileMetadatas.FirstOrDefaultAsync(m => m.SavedName == savedName);
-            }
-
-            if (metadata == null)
-            {
-                throw new FileNotFoundException("File metadata not found.");
-            }
-            if (string.IsNullOrEmpty(metadata.CloudUrl))
-            {
-                throw new InvalidOperationException("File này không lưu trên Cloudinary.");
-            }
-
-            // Fetch the file server-side and stream it back. The server request is
-            // not subject to the browser CORS/referrer restriction that makes the
-            // direct Cloudinary URL 401 in the browser.
-            var response = await _http.GetAsync(metadata.CloudUrl);
-            response.EnsureSuccessStatusCode();
-            var stream = await response.Content.ReadAsStreamAsync();
-            var contentType = response.Content.Headers.ContentType?.ToString()
-                ?? (string.IsNullOrEmpty(metadata.ContentType) ? "application/octet-stream" : metadata.ContentType);
-            return (stream, contentType, metadata.OriginalName);
-        }
-
         public async Task<bool> DeleteAsync(string savedName)
         {
             using (var scope = _scopeFactory.CreateScope())
