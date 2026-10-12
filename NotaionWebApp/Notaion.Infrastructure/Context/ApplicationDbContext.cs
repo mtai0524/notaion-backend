@@ -39,6 +39,11 @@ namespace Notaion.Infrastructure.Context
                 .Property(e => e.Attachments)
                 .HasConversion(attachmentsConverter)
                 .Metadata.SetValueComparer(attachmentsComparer);
+
+            // Mọi truy vấn file đều lọc theo chủ sở hữu
+            // (FileService.GetAllAsync/DeleteAsync).
+            builder.Entity<FileMetadata>()
+                .HasIndex(e => e.UserId);
         }
 
         public DbSet<Item> Items { get; set; }

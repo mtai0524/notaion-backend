@@ -38,7 +38,7 @@ namespace Notaion.Infrastructure.Services
             }
         }
 
-        public async Task<FileMetadata> UploadAsync(IFormFile file)
+        public async Task<FileMetadata> UploadAsync(IFormFile file, string userId)
         {
             var id = Guid.NewGuid();
             var extension = Path.GetExtension(file.FileName);
@@ -57,7 +57,8 @@ namespace Notaion.Infrastructure.Services
                 SavedName = savedName,
                 ContentType = file.ContentType,
                 SizeInBytes = file.Length,
-                UploadedAt = DateTime.UtcNow
+                UploadedAt = DateTime.UtcNow,
+                UserId = userId
             };
 
             using (var scope = _scopeFactory.CreateScope())
@@ -70,7 +71,7 @@ namespace Notaion.Infrastructure.Services
             return metadata;
         }
 
-        public async Task<FileMetadata> UploadCloudAsync(IFormFile file)
+        public async Task<FileMetadata> UploadCloudAsync(IFormFile file, string userId)
         {
             var uploadResult = await _cloudinaryService.UploadFileAsync(file);
 
@@ -82,7 +83,8 @@ namespace Notaion.Infrastructure.Services
                 ContentType = file.ContentType,
                 SizeInBytes = file.Length,
                 UploadedAt = DateTime.UtcNow,
-                CloudUrl = uploadResult.Url
+                CloudUrl = uploadResult.Url,
+                UserId = userId
             };
 
             using (var scope = _scopeFactory.CreateScope())
@@ -95,12 +97,15 @@ namespace Notaion.Infrastructure.Services
             return metadata;
         }
 
-        public async Task<List<FileMetadata>> GetAllAsync()
+        public async Task<List<FileMetadata>> GetAllAsync(string userId)
         {
             using (var scope = _scopeFactory.CreateScope())
             {
                 var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-                return await dbContext.FileMetadatas.OrderByDescending(m => m.UploadedAt).ToListAsync();
+                return await dbContext.FileMetadatas
+                    .Where(m => m.UserId == userId)
+                    .OrderByDescending(m => m.UploadedAt)
+                    .ToListAsync();
             }
         }
 
@@ -133,12 +138,14 @@ namespace Notaion.Infrastructure.Services
             return (stream, metadata.ContentType, metadata.OriginalName);
         }
 
-        public async Task<bool> DeleteAsync(string savedName)
+        public async Task<bool> DeleteAsync(string savedName, string userId)
         {
             using (var scope = _scopeFactory.CreateScope())
             {
                 var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-                var metadata = await dbContext.FileMetadatas.FirstOrDefaultAsync(m => m.SavedName == savedName);
+                // Lọc luôn theo chủ sở hữu: file của người khác coi như không tồn tại.
+                var metadata = await dbContext.FileMetadatas
+                    .FirstOrDefaultAsync(m => m.SavedName == savedName && m.UserId == userId);
 
                 if (metadata == null) return false;
 
