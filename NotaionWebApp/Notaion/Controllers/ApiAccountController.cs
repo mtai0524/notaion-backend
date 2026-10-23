@@ -584,6 +584,24 @@ namespace WebAPI.Controllers
         }
 
         [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
+        [HttpPost("set-password")]
+        public async Task<IActionResult> SetPassword([FromBody] SetPasswordModel model)
+        {
+            if (model == null || string.IsNullOrWhiteSpace(model.NewPassword))
+                return BadRequest(new { message = "Mật khẩu mới không được để trống." });
+
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var user = userId == null ? null : await _userManager.FindByIdAsync(userId);
+            if (user == null) return Unauthorized();
+
+            var result = await accountRepo.SetPasswordAsync(user, model.CurrentPassword, model.NewPassword);
+            if (!result.Succeeded)
+                return BadRequest(new { message = string.Join(" ", result.Errors.Select(e => e.Description)) });
+
+            return Ok(new { hasPassword = true });
+        }
+
+        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
         [HttpDelete("unlink-provider/{provider}")]
         public async Task<IActionResult> UnlinkProvider(string provider)
         {
