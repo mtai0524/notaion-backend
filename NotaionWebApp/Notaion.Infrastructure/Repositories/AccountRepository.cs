@@ -71,6 +71,28 @@ namespace Notaion.Infrastructure.Persistence
             return GenerateJwtToken(user);
         }
 
+        // An account created through Discord/GitHub has no password hash, so it can
+        // never pass SignInAsync. AddPasswordAsync gives it one; an account that
+        // already has a password must prove the current one before changing it.
+        public async Task<IdentityResult> SetPasswordAsync(User user, string? currentPassword, string newPassword)
+        {
+            if (!await userManager.HasPasswordAsync(user))
+            {
+                return await userManager.AddPasswordAsync(user, newPassword);
+            }
+
+            if (string.IsNullOrEmpty(currentPassword))
+            {
+                return IdentityResult.Failed(new IdentityError
+                {
+                    Code = "CurrentPasswordRequired",
+                    Description = "Tài khoản đã có mật khẩu. Nhập mật khẩu hiện tại để đổi.",
+                });
+            }
+
+            return await userManager.ChangePasswordAsync(user, currentPassword, newPassword);
+        }
+
         public string GenerateJwtToken(User user)
         {
             var authClaims = new List<Claim>
