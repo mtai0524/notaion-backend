@@ -497,6 +497,36 @@ namespace Notaion.Migrations
                     b.ToTable("DailyNotes");
                 });
 
+            modelBuilder.Entity("Notaion.Domain.Entities.EnglishItem", b =>
+                {
+                    b.Property<string>("UserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("Id")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<long>("CreatedAt")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Data")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("nvarchar(16)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("UserId", "Id");
+
+                    b.ToTable("EnglishItems");
+                });
+
             modelBuilder.Entity("Notaion.Domain.Entities.FileMetadata", b =>
                 {
                     b.Property<Guid>("Id")

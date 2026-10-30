@@ -16,6 +16,7 @@ using Scalar.AspNetCore;
 using Notaion.Application.Interfaces.Services;
 using Notaion.Infrastructure.Services;
 using System.Text;
+using System.Threading.RateLimiting;
 using AspNet.Security.OAuth.Discord;
 using AspNet.Security.OAuth.GitHub;
 
@@ -32,6 +33,20 @@ builder.Services.AddDbContext(builder.Configuration);
 builder.Services.AddInfrastructure(builder.Configuration);
 
 builder.Services.AddScoped<IFileService, FileService>();
+
+// English endpoints, per client IP: each check costs an AI call; data calls
+// get a looser cap (the page autosaves while typing).
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy(Notaion.Controllers.EnglishController.CheckRateLimitPolicy, context => PerMinuteByIp(context, 20));
+    options.AddPolicy(Notaion.Controllers.EnglishController.DataRateLimitPolicy, context => PerMinuteByIp(context, 300));
+});
+
+static RateLimitPartition<string> PerMinuteByIp(HttpContext context, int permitLimit) =>
+    RateLimitPartition.GetFixedWindowLimiter(
+        context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = permitLimit, Window = TimeSpan.FromMinutes(1) });
 
 builder.Services.Configure<IISServerOptions>(options => {
     options.MaxRequestBodySize = 100 * 1024 * 1024;
@@ -181,6 +196,7 @@ app.UseHttpsRedirection();
 
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseRateLimiter();
 app.MapControllers();
 
 app.UseCors("AllowAllOrigins");

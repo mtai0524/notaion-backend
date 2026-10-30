@@ -44,6 +44,10 @@ namespace Notaion.Infrastructure.Context
             // (FileService.GetAllAsync/DeleteAsync).
             builder.Entity<FileMetadata>()
                 .HasIndex(e => e.UserId);
+
+            // English items are always read per user; the key leads with UserId.
+            builder.Entity<EnglishItem>()
+                .HasKey(e => new { e.UserId, e.Id });
         }
 
         public DbSet<Item> Items { get; set; }
@@ -58,5 +62,6 @@ namespace Notaion.Infrastructure.Context
         public DbSet<PageVisit> PageVisits { get; set; }
         public DbSet<AIMemory> AIMemories { get; set; }
         public DbSet<FileMetadata> FileMetadatas { get; set; }
+        public DbSet<EnglishItem> EnglishItems { get; set; }
     }
 }
