@@ -42,6 +42,7 @@ namespace Notaion.Infrastructure
             // english
             services.AddScoped<IEnglishService, EnglishService>();
             services.AddScoped<IEnglishItemService, EnglishItemService>();
+            services.AddScoped<IEnglishDailyService, EnglishDailyService>();
 
             
             // generic repo

@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Security.Claims;
 using System.Text.Json.Nodes;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -24,11 +25,13 @@ namespace Notaion.Controllers
 
         private readonly IEnglishService _englishService;
         private readonly IEnglishItemService _itemService;
+        private readonly IEnglishDailyService _dailyService;
 
-        public EnglishController(IEnglishService englishService, IEnglishItemService itemService)
+        public EnglishController(IEnglishService englishService, IEnglishItemService itemService, IEnglishDailyService dailyService)
         {
             _englishService = englishService;
             _itemService = itemService;
+            _dailyService = dailyService;
         }
 
         private string? GetUserId() => User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -100,6 +103,31 @@ namespace Notaion.Controllers
             var deleted = await _itemService.DeleteAsync(userId, kind, id);
             if (!deleted) return Error(StatusCodes.Status404NotFound, "not_found", "Item not found.");
             return NoContent();
+        }
+
+        // Creates the day's lesson (cards, sentences, a reading text, a writing
+        // task) with AI, once per date; the page calls it when opened.
+        [HttpPost("daily")]
+        [EnableRateLimiting(CheckRateLimitPolicy)]
+        [ProducesResponseType(typeof(EnglishDailyResultDto), StatusCodes.Status200OK)]
+        public async Task<IActionResult> CreateDailyAsync([FromBody] EnglishDailyDto dto)
+        {
+            var userId = GetUserId();
+            if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+            var date = dto?.Date;
+            if (!DateOnly.TryParseExact(date, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out _))
+            {
+                return Error(StatusCodes.Status422UnprocessableEntity, "invalid_date", "Date must be yyyy-MM-dd.");
+            }
+
+            var result = await _dailyService.CreateAsync(userId, date!);
+            if (result == null)
+            {
+                return Error(StatusCodes.Status502BadGateway, "ai_unavailable", "The AI could not prepare today's lesson. Please try again.");
+            }
+
+            return Ok(result);
         }
 
         [HttpPost("check")]

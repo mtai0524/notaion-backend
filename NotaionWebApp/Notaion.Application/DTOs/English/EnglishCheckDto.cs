@@ -16,4 +16,19 @@ namespace Notaion.Application.DTOs.English
     {
         public int Saved { get; set; }
     }
+
+    public class EnglishDailyDto
+    {
+        // The learner's local date, yyyy-MM-dd.
+        public string? Date { get; set; }
+    }
+
+    public class EnglishDailyResultDto
+    {
+        // False when the lesson for that date already existed.
+        public bool Created { get; set; }
+        public string? Topic { get; set; }
+        public int Cards { get; set; }
+        public int Sentences { get; set; }
+    }
 }
