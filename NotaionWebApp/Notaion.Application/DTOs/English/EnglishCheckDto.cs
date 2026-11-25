@@ -12,6 +12,19 @@ namespace Notaion.Application.DTOs.English
         public int Score { get; set; }
     }
 
+    public class EnglishTranslateDto
+    {
+        public string? Word { get; set; }
+        // The sentence the word was seen in; picks the sense to translate.
+        public string? Context { get; set; }
+    }
+
+    public class EnglishTranslateResultDto
+    {
+        // Vietnamese meaning with the part of speech, e.g. "(adj.) kiên cường, mau phục hồi".
+        public string Meaning { get; set; } = string.Empty;
+    }
+
     public class EnglishBulkResultDto
     {
         public int Saved { get; set; }

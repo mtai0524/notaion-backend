@@ -12,7 +12,8 @@ using Notaion.Application.Services;
 namespace Notaion.Controllers
 {
     // English practice for the /english page and the notaion MCP server:
-    // the user's cards / sentences / texts / writings, and the AI writing check.
+    // the user's cards / sentences / texts / writings, the AI writing check,
+    // and word translation for the browser extension.
     // Scheme named explicitly: the app registers cookie (OAuth) and JWT auth.
     [Route("api/[controller]")]
     [ApiController]
@@ -22,6 +23,8 @@ namespace Notaion.Controllers
         public const string CheckRateLimitPolicy = "english-check";
         public const string DataRateLimitPolicy = "english-data";
         private const int MaxTextLength = 4000;
+        private const int MaxWordLength = 100;
+        private const int MaxContextLength = 500;
 
         private readonly IEnglishService _englishService;
         private readonly IEnglishItemService _itemService;
@@ -149,6 +152,38 @@ namespace Notaion.Controllers
             if (result == null)
             {
                 return Error(StatusCodes.Status502BadGateway, "ai_unavailable", "The AI could not check this text. Please try again.");
+            }
+
+            return Ok(result);
+        }
+
+        // Vietnamese meaning of a word or phrase, in the sense it has in
+        // `context` when one is sent.
+        [HttpPost("translate")]
+        [EnableRateLimiting(CheckRateLimitPolicy)]
+        [ProducesResponseType(typeof(EnglishTranslateResultDto), StatusCodes.Status200OK)]
+        public async Task<IActionResult> TranslateAsync([FromBody] EnglishTranslateDto dto)
+        {
+            var word = dto?.Word?.Trim();
+            if (string.IsNullOrEmpty(word))
+            {
+                return Error(StatusCodes.Status422UnprocessableEntity, "word_required", "Word is required.");
+            }
+            if (word.Length > MaxWordLength)
+            {
+                return Error(StatusCodes.Status422UnprocessableEntity, "word_too_long", $"Word is too long (max {MaxWordLength} characters).");
+            }
+
+            var context = dto?.Context?.Trim();
+            if (context?.Length > MaxContextLength)
+            {
+                return Error(StatusCodes.Status422UnprocessableEntity, "context_too_long", $"Context is too long (max {MaxContextLength} characters).");
+            }
+
+            var result = await _englishService.TranslateAsync(word, context);
+            if (result == null)
+            {
+                return Error(StatusCodes.Status502BadGateway, "ai_unavailable", "The AI could not translate this word. Please try again.");
             }
 
             return Ok(result);
