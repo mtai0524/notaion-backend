@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Caching.Memory;
 using Notaion.Application.Interfaces.Services;
+using System.Net;
 using System.Text;
 using System.Text.Json;
 using System.Net.Http.Headers;
@@ -131,14 +132,15 @@ A `[MEMORY]` block below contains facts the user has taught you. Treat them as a
                 };
                 messages.AddRange(trimmed);
 
-                var result = await TryAllModelsAsync(messages);
+                var (success, result) = await TryAllModelsAsync(messages);
 
-                if (result != null && !result.StartsWith("Lỗi") && !result.StartsWith("AI đang"))
+                // Only real answers are cached; an error must not stick for CacheTtl.
+                if (success)
                 {
                     _cache.Set(cacheKey, result, CacheTtl);
                 }
 
-                return result ?? "Xin lỗi, tôi không thể xử lý câu hỏi này lúc này.";
+                return result;
             }
             finally
             {
@@ -146,9 +148,13 @@ A `[MEMORY]` block below contains facts the user has taught you. Treat them as a
             }
         }
 
-        private async Task<string?> TryAllModelsAsync(List<object> messages)
+        // Tries the models in order. 429 retries the same model; any other failure
+        // (e.g. a free model withdrawn by OpenRouter, an empty reply, a network
+        // error) moves on to the next one. A rejected key stops: no model can work.
+        private async Task<(bool success, string text)> TryAllModelsAsync(List<object> messages)
         {
             var retryDelays = new[] { TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(3) };
+            string? lastError = null;
 
             foreach (var model in _allModels)
             {
@@ -160,7 +166,7 @@ A `[MEMORY]` block below contains facts the user has taught you. Treat them as a
                         await Task.Delay(retryDelays[attempt - 1]);
                     }
 
-                    var (success, isRateLimited, response) = await CallApiAsync(model, messages);
+                    var (success, status, response) = await CallApiAsync(model, messages);
 
                     if (success)
                     {
@@ -168,25 +174,23 @@ A `[MEMORY]` block below contains facts the user has taught you. Treat them as a
                         {
                             Console.WriteLine($"[AI-Fallback] Used model: {model}");
                         }
-                        return response;
+                        return (true, response!);
                     }
 
-                    if (!isRateLimited)
-                    {
-                        // Lỗi không phải 429 → không retry model này nữa
-                        return response;
-                    }
+                    if (status == HttpStatusCode.Unauthorized) return (false, response!);
+                    if (status == HttpStatusCode.TooManyRequests) continue;
 
-                    // 429 → thử lại sau delay (nếu còn lượt)
+                    lastError = response;
+                    break;
                 }
 
-                Console.WriteLine($"[AI-RateLimit] Model {model} exhausted, trying next fallback.");
+                Console.WriteLine($"[AI-Fallback] Model {model} failed, trying the next one.");
             }
 
-            return "AI đang quá tải, vui lòng thử lại sau vài giây.";
+            return (false, lastError ?? "AI đang quá tải, vui lòng thử lại sau vài giây.");
         }
 
-        private async Task<(bool success, bool isRateLimited, string? response)> CallApiAsync(string model, List<object> messages)
+        private async Task<(bool success, HttpStatusCode? status, string? response)> CallApiAsync(string model, List<object> messages)
         {
             try
             {
@@ -216,23 +220,23 @@ A `[MEMORY]` block below contains facts the user has taught you. Treat them as a
                 var httpResponse = await _httpClient.SendAsync(request);
                 var responseContent = await httpResponse.Content.ReadAsStringAsync();
 
-                if (httpResponse.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+                if (httpResponse.StatusCode == HttpStatusCode.TooManyRequests)
                 {
                     Console.WriteLine($"[AI-429] Model={model}");
-                    return (false, true, null);
+                    return (false, httpResponse.StatusCode, null);
                 }
 
-                if (httpResponse.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+                if (httpResponse.StatusCode == HttpStatusCode.Unauthorized)
                 {
                     var msg = ExtractErrorMessage(responseContent);
-                    return (false, false, $"Lỗi xác thực OpenRouter (401): Vui lòng kiểm tra lại API Key. {msg}");
+                    return (false, httpResponse.StatusCode, $"Lỗi xác thực OpenRouter (401): Vui lòng kiểm tra lại API Key. {msg}");
                 }
 
                 if (!httpResponse.IsSuccessStatusCode)
                 {
                     Console.WriteLine($"[AI-Error] Status={httpResponse.StatusCode} Model={model} Body={responseContent.Substring(0, Math.Min(200, responseContent.Length))}");
                     var msg = ExtractErrorMessage(responseContent);
-                    return (false, false, $"Lỗi kết nối AI (Mã {(int)httpResponse.StatusCode}): {msg}");
+                    return (false, httpResponse.StatusCode, $"Lỗi kết nối AI (Mã {(int)httpResponse.StatusCode}): {msg}");
                 }
 
                 using var doc = JsonDocument.Parse(responseContent);
@@ -244,16 +248,17 @@ A `[MEMORY]` block below contains facts the user has taught you. Treat them as a
                     if (firstChoice.TryGetProperty("message", out var message) && message.TryGetProperty("content", out var aiContent))
                     {
                         var text = (aiContent.GetString() ?? "").Trim();
-                        return (true, false, text);
+                        if (text.Length > 0) return (true, httpResponse.StatusCode, text);
+                        Console.WriteLine($"[AI-Empty] Model={model} returned an empty reply.");
                     }
                 }
 
-                return (false, false, "Xin lỗi, tôi không thể xử lý câu hỏi này lúc này.");
+                return (false, httpResponse.StatusCode, "Xin lỗi, tôi không thể xử lý câu hỏi này lúc này.");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[AI-Exception] {ex.Message}");
-                return (false, false, $"Đã xảy ra lỗi khi kết nối với AI: {ex.Message}");
+                Console.WriteLine($"[AI-Exception] Model={model} {ex.Message}");
+                return (false, null, $"Đã xảy ra lỗi khi kết nối với AI: {ex.Message}");
             }
         }
 
